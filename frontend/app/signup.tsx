@@ -1,8 +1,59 @@
-import { StyleSheet, View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
+import { useState } from "react";
+import { useRouter } from "expo-router";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebaseConfig";
 
 export default function SignupScreen() {
   const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSignup = async () => {
+    if (password !== confirmPassword) {
+      Alert.alert("Passwords do not match", "Please re-enter your passwords.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const userCred = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const token = await userCred.user.getIdToken();
+
+      console.log("✅ User created:", userCred.user.email);
+      console.log("🔑 Firebase token:", token);
+
+      // Optionally: Send token to your Django backend for registration
+      // await fetch("https://your-backend.com/api/register/", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     Authorization: `Bearer ${token}`,
+      //   },
+      // });
+
+      router.replace("/Dashboard"); // navigate to home/feed screen after signup
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      Alert.alert("Signup Failed", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -19,6 +70,8 @@ export default function SignupScreen() {
               placeholderTextColor="#9ca3af"
               keyboardType="email-address"
               autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
             />
           </View>
 
@@ -29,6 +82,8 @@ export default function SignupScreen() {
               placeholder="Enter your password"
               placeholderTextColor="#9ca3af"
               secureTextEntry
+              value={password}
+              onChangeText={setPassword}
             />
           </View>
 
@@ -39,16 +94,20 @@ export default function SignupScreen() {
               placeholder="Re-enter your password"
               placeholderTextColor="#9ca3af"
               secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
             />
           </View>
 
-          <TouchableOpacity style={styles.signupButton}>
-            <Text style={styles.signupButtonText}>Sign Up</Text>
+          <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
+            <Text style={styles.signupButtonText}>
+              {loading ? "Signing Up..." : "Sign Up"}
+            </Text>
           </TouchableOpacity>
 
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.replace('/login')}>
+            <TouchableOpacity onPress={() => router.replace("/login")}>
               <Text style={styles.loginLink}>Sign In</Text>
             </TouchableOpacity>
           </View>
@@ -59,70 +118,40 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  content: { flex: 1, padding: 24, justifyContent: "center" },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: "bold",
+    color: "#111827",
     marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginBottom: 32,
-  },
-  form: {
-    gap: 20,
-  },
-  inputContainer: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
+  subtitle: { fontSize: 16, color: "#6b7280", marginBottom: 32 },
+  form: { gap: 20 },
+  inputContainer: { gap: 8 },
+  label: { fontSize: 14, fontWeight: "600", color: "#374151" },
   input: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
-    color: '#111827',
+    color: "#111827",
   },
   signupButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: "#6366f1",
     borderRadius: 8,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
-  signupButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  signupButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
   loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  loginText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  loginLink: {
-    fontSize: 14,
-    color: '#6366f1',
-    fontWeight: '600',
-  },
+  loginText: { fontSize: 14, color: "#6b7280" },
+  loginLink: { fontSize: 14, color: "#6366f1", fontWeight: "600" },
 });
