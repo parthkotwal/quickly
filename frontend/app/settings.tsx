@@ -1,14 +1,55 @@
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import BottomTabBar from '@/components/BottomTabBar';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import BottomTabBar from "@/components/BottomTabBar";
+import { signOut } from "firebase/auth";
+import { auth } from "../firebaseConfig";
+import { useRouter } from "expo-router";
 
 export default function SettingsScreen() {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      console.log("User signed out");
+      router.replace("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
   const settingsOptions = [
-    { icon: 'person-outline', title: 'Account', subtitle: 'Manage your account' },
-    { icon: 'notifications-outline', title: 'Notifications', subtitle: 'Configure notifications' },
-    { icon: 'lock-closed-outline', title: 'Privacy', subtitle: 'Privacy settings' },
-    { icon: 'help-circle-outline', title: 'Help & Support', subtitle: 'Get help' },
-    { icon: 'information-circle-outline', title: 'About', subtitle: 'App information' },
+    {
+      icon: "person-outline",
+      title: "Account",
+      subtitle: "Manage your account",
+    },
+    {
+      icon: "notifications-outline",
+      title: "Notifications",
+      subtitle: "Configure notifications",
+    },
+    {
+      icon: "lock-closed-outline",
+      title: "Privacy",
+      subtitle: "Privacy settings",
+    },
+    {
+      icon: "help-circle-outline",
+      title: "Help & Support",
+      subtitle: "Get help",
+    },
+    {
+      icon: "information-circle-outline",
+      title: "About",
+      subtitle: "App information",
+    },
   ];
 
   return (
@@ -32,7 +73,9 @@ export default function SettingsScreen() {
                 <Ionicons name={option.icon as any} size={24} color="#6b7280" />
                 <View style={styles.settingsItemText}>
                   <Text style={styles.settingsItemTitle}>{option.title}</Text>
-                  <Text style={styles.settingsItemSubtitle}>{option.subtitle}</Text>
+                  <Text style={styles.settingsItemSubtitle}>
+                    {option.subtitle}
+                  </Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
@@ -40,7 +83,7 @@ export default function SettingsScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -53,60 +96,60 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
   },
   header: {
     paddingTop: 60,
     paddingBottom: 16,
     paddingHorizontal: 24,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: "bold",
+    color: "#111827",
   },
   content: {
     flex: 1,
   },
   profileSection: {
-    backgroundColor: '#fff',
-    alignItems: 'center',
+    backgroundColor: "#fff",
+    alignItems: "center",
     paddingVertical: 32,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#e0e7ff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#e0e7ff",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 12,
   },
   userName: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
   settingsList: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     marginTop: 20,
   },
   settingsItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: "#f3f4f6",
   },
   settingsItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 16,
   },
   settingsItemText: {
@@ -114,25 +157,25 @@ const styles = StyleSheet.create({
   },
   settingsItemTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
   settingsItemSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   logoutButton: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     margin: 20,
     padding: 16,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#ef4444',
+    borderColor: "#ef4444",
   },
   logoutButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#ef4444',
+    fontWeight: "600",
+    color: "#ef4444",
   },
 });
