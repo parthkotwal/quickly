@@ -1,3 +1,4 @@
+// app/signup.tsx
 import {
   StyleSheet,
   View,
@@ -8,51 +9,29 @@ import {
 } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebaseConfig";
 
 export default function SignupScreen() {
   const router = useRouter();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSignup = async () => {
+  const handleContinue = () => {
     if (password !== confirmPassword) {
       Alert.alert("Passwords do not match", "Please re-enter your passwords.");
       return;
     }
-
-    try {
-      setLoading(true);
-      const userCred = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const token = await userCred.user.getIdToken();
-
-      console.log("✅ User created:", userCred.user.email);
-      console.log("🔑 Firebase token:", token);
-
-      // Optionally: Send token to your Django backend for registration
-      // await fetch("https://your-backend.com/api/register/", {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     Authorization: `Bearer ${token}`,
-      //   },
-      // });
-
-      router.replace("/Dashboard"); // navigate to home/feed screen after signup
-    } catch (error: any) {
-      console.error("Signup error:", error);
-      Alert.alert("Signup Failed", error.message);
-    } finally {
-      setLoading(false);
+    if (!email || !password) {
+      Alert.alert("Missing Info", "Please fill in all fields.");
+      return;
     }
+
+    // Pass credentials to interests screen
+    router.push({
+      pathname: "/interests",
+      params: { email, password },
+    });
   };
 
   return (
@@ -99,9 +78,12 @@ export default function SignupScreen() {
             />
           </View>
 
-          <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
+          <TouchableOpacity
+            style={styles.signupButton}
+            onPress={handleContinue}
+          >
             <Text style={styles.signupButtonText}>
-              {loading ? "Signing Up..." : "Sign Up"}
+              {loading ? "Loading..." : "Continue"}
             </Text>
           </TouchableOpacity>
 
