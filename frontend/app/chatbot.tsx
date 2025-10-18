@@ -2,6 +2,8 @@ import { StyleSheet, View, Text, TextInput, ScrollView, KeyboardAvoidingView, Pl
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../config';
 
 export default function ChatbotScreen() {
   const router = useRouter();
@@ -11,18 +13,62 @@ export default function ChatbotScreen() {
   const [inputText, setInputText] = useState('');
   const [dropdownVisible, setDropdownVisible] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (inputText.trim()) {
+      const topic = inputText;
       // Add user message
-      const userMessage = { id: Date.now(), text: inputText, isBot: false };
+      const userMessage = { id: Date.now(), text: topic, isBot: false };
       setMessages([...messages, userMessage]);
       setInputText('');
 
-      // Simulate bot response
-      setTimeout(() => {
-        const botMessage = { id: Date.now() + 1, text: 'This is a demo response. AI integration coming soon!', isBot: true };
-        setMessages(prev => [...prev, botMessage]);
-      }, 1000);
+      // Add loading message
+      const loadingMessage = { id: Date.now() + 1, text: 'Generating your personalized learning feed...', isBot: true };
+      setMessages(prev => [...prev, loadingMessage]);
+
+      try {
+        // Call backend API
+        const response = await fetch(`${API_URL}/generateFeed`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ topic }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Store feed data and topic
+          await AsyncStorage.setItem('feedPosts', JSON.stringify(data.posts));
+          await AsyncStorage.setItem('currentTopic', topic);
+
+          // Get existing topics and add this one
+          const existingTopics = await AsyncStorage.getItem('topics');
+          const topics = existingTopics ? JSON.parse(existingTopics) : [];
+          if (!topics.includes(topic)) {
+            topics.unshift(topic); // Add to beginning
+            await AsyncStorage.setItem('topics', JSON.stringify(topics));
+          }
+
+          // Remove loading message and add success message
+          setMessages(prev => prev.slice(0, -1).concat([
+            { id: Date.now() + 2, text: `Great! I've created 5 educational posts about "${topic}". Head back to the home page to view your personalized feed!`, isBot: true }
+          ]));
+
+          // Redirect to home after a delay
+          setTimeout(() => {
+            router.replace('/chat');
+          }, 2000);
+        } else {
+          setMessages(prev => prev.slice(0, -1).concat([
+            { id: Date.now() + 2, text: `Sorry, I encountered an error: ${data.error}`, isBot: true }
+          ]));
+        }
+      } catch (error) {
+        setMessages(prev => prev.slice(0, -1).concat([
+          { id: Date.now() + 2, text: 'Sorry, I could not connect to the server. Please make sure the backend is running.', isBot: true }
+        ]));
+      }
     }
   };
 
