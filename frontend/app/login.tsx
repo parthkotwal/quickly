@@ -33,7 +33,7 @@ export default function LoginScreen() {
       //   },
       // });
 
-      router.replace("/Dashboard");
+      router.replace("/chat");
     } catch (error: any) {
       Alert.alert("Login failed", error.message);
     } finally {
