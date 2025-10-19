@@ -5,7 +5,7 @@ import os
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .dynamodb_service import save_posts, get_user_posts, get_user_topics, like_post, unlike_post, get_user_likes, is_post_liked, get_posts_by_topic, delete_feed, get_public_feed, update_feed_privacy, get_user_flashcards, get_flashcard_by_id, delete_flashcard_set
+from .dynamodb_service import save_posts, get_user_posts, get_user_topics, like_post, unlike_post, get_user_likes, is_post_liked, get_posts_by_topic, delete_feed, get_public_feed, update_feed_privacy, get_user_flashcards, get_flashcard_by_id, delete_flashcard_set, get_user_quizzes, get_quiz_by_id, submit_quiz_score, delete_quiz_set
 from .s3_service import upload_image_from_url
 from django.views.decorators.csrf import csrf_exempt
 from .s3_service import upload_image_file
@@ -572,6 +572,139 @@ def delete_flashcard_set_view(request):
         
     except Exception as e:
         print(f"❌ Error in delete_flashcard_set: {str(e)}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def get_saved_quizzes(request):
+    """
+    Get all saved quiz sets for a user
+    """
+    try:
+        user_id = request.query_params.get('userId')
+        
+        if not user_id:
+            return Response(
+                {'error': 'userId is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        quizzes = get_user_quizzes(user_id)
+        
+        return Response({
+            'quizzes': quizzes
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"❌ Error in get_saved_quizzes: {str(e)}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def get_quiz_set(request):
+    """
+    Get specific quiz set by ID
+    """
+    try:
+        user_id = request.query_params.get('userId')
+        quiz_id = request.query_params.get('quizId')
+        
+        if not user_id or not quiz_id:
+            return Response(
+                {'error': 'userId and quizId are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        quiz_set = get_quiz_by_id(user_id, quiz_id)
+        
+        if not quiz_set:
+            return Response(
+                {'error': 'Quiz set not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        return Response({
+            'questions': quiz_set['questions'],
+            'title': quiz_set['title'],
+            'createdAt': quiz_set['createdAt'],
+            'imageUrl': quiz_set.get('imageUrl'),
+            'isCompleted': quiz_set.get('isCompleted', False),
+            'score': quiz_set.get('score'),
+            'totalQuestions': quiz_set.get('totalQuestions', 0),
+            'userAnswers': quiz_set.get('userAnswers', [])
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"❌ Error in get_quiz_set: {str(e)}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+def submit_quiz_completion(request):
+    """
+    Submit quiz completion with user answers and score
+    """
+    try:
+        user_id = request.data.get('userId')
+        quiz_id = request.data.get('quizId')
+        user_answers = request.data.get('userAnswers')
+        score = request.data.get('score')
+        
+        if not all([user_id, quiz_id, user_answers is not None, score is not None]):
+            return Response(
+                {'error': 'userId, quizId, userAnswers, and score are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        result = submit_quiz_score(user_id, quiz_id, user_answers, score)
+        
+        return Response({
+            'message': 'Quiz completed successfully',
+            'score': score,
+            'submitted': True
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"❌ Error in submit_quiz_completion: {str(e)}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['DELETE'])
+def delete_quiz_set_view(request):
+    """
+    Delete a specific quiz set
+    """
+    try:
+        user_id = request.query_params.get('userId')
+        quiz_id = request.query_params.get('quizId')
+        
+        if not user_id or not quiz_id:
+            return Response(
+                {'error': 'userId and quizId are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        result = delete_quiz_set(user_id, quiz_id)
+        
+        return Response({
+            'message': 'Quiz set deleted successfully',
+            'deleted': True
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"❌ Error in delete_quiz_set: {str(e)}")
         return Response(
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
