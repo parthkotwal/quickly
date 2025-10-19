@@ -1,17 +1,26 @@
 import { StyleSheet, View, Text, Image, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback } from 'react';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface FeedPost {
+  imageUrl: string;
+  text: string;
+  musicTitle?: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  isLiked: boolean;
+}
 
 export default function ChatScreen() {
   const router = useRouter();
   const [dropdownVisible, setDropdownVisible] = useState(false);
-  const [feedPosts, setFeedPosts] = useState([]);
-  const [topics, setTopics] = useState([]);
+  const [feedPosts, setFeedPosts] = useState<FeedPost[]>([]);
+  const [topics, setTopics] = useState<string[]>([]);
 
   // Load feed data when screen comes into focus
   useFocusEffect(
@@ -28,7 +37,7 @@ export default function ChatScreen() {
       if (storedPosts) {
         const posts = JSON.parse(storedPosts);
         // Add random engagement metrics to each post
-        const postsWithMetrics = posts.map(post => ({
+        const postsWithMetrics = posts.map((post: any) => ({
           ...post,
           likes: Math.floor(Math.random() * 10000) + 100, // 100-10,100 likes
           comments: Math.floor(Math.random() * 500) + 10, // 10-510 comments
@@ -45,14 +54,14 @@ export default function ChatScreen() {
     }
   };
 
-  const formatNumber = (num) => {
+  const formatNumber = (num: number): string => {
     if (num >= 1000) {
       return (num / 1000).toFixed(1) + 'K';
     }
     return num.toString();
   };
 
-  const toggleLike = (index) => {
+  const toggleLike = (index: number): void => {
     setFeedPosts(prevPosts =>
       prevPosts.map((post, i) =>
         i === index
