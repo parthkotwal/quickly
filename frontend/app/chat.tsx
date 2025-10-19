@@ -67,6 +67,16 @@ export default function ChatScreen() {
       createdAt: string;
     }>
   >([]);
+  const [savedQuizzes, setSavedQuizzes] = useState<
+    Array<{
+      id: string;
+      title: string;
+      createdAt: string;
+      isCompleted: boolean;
+      score?: number;
+      totalQuestions?: number;
+    }>
+  >([]);
 
   const slideAnim = useRef(new Animated.Value(-300)).current;
 
@@ -99,11 +109,33 @@ export default function ChatScreen() {
     }
   };
 
+  const loadSavedQuizzes = async () => {
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) return;
+
+      const response = await fetch(
+        `${API_URL}/getSavedQuizzes?userId=${userId}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setSavedQuizzes(data.quizzes || []);
+      } else {
+        console.error("Failed to load quizzes:", response.statusText);
+        setSavedQuizzes([]);
+      }
+    } catch (error) {
+      console.error("Error loading saved quizzes:", error);
+      setSavedQuizzes([]);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       setOffset(0);
       setFeedPosts([]);
       loadSavedFlashcards();
+      loadSavedQuizzes();
       const newTopic = params.newTopic as string;
       if (newTopic) loadFeedData(newTopic);
       else loadFeedData();
@@ -259,6 +291,63 @@ export default function ChatScreen() {
     }
   };
 
+  const openQuiz = async (quizId: string) => {
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) return;
+
+      const response = await fetch(
+        `${API_URL}/getQuiz?userId=${userId}&quizId=${quizId}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        router.push({
+          pathname: "/quiz",
+          params: {
+            data: encodeURIComponent(
+              JSON.stringify({
+                questions: data.questions || [],
+                title: data.title || "Quiz",
+                id: quizId,
+                isCompleted: data.isCompleted || false,
+                score: data.score,
+                totalQuestions: data.totalQuestions,
+                userAnswers: data.userAnswers || [],
+              })
+            ),
+          },
+        });
+      } else {
+        Alert.alert("Error", "Failed to load quiz");
+      }
+    } catch (error) {
+      console.error("Error opening quiz:", error);
+    }
+  };
+
+  const deleteQuiz = async (quizId: string) => {
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) return;
+
+      const response = await fetch(
+        `${API_URL}/deleteQuiz?userId=${userId}&quizId=${quizId}`,
+        { method: "DELETE" }
+      );
+
+      if (response.ok) {
+        setSavedQuizzes((prev) => prev.filter((quiz) => quiz.id !== quizId));
+        Alert.alert("Success", "Quiz deleted successfully");
+      } else {
+        Alert.alert("Error", "Failed to delete quiz");
+      }
+    } catch (error) {
+      console.error("Error deleting quiz:", error);
+      Alert.alert("Error", "Something went wrong while deleting");
+    }
+  };
+
   const toggleLike = async (index: number) => {
     const post = feedPosts[index];
     const newLikedState = !post.isLiked;
@@ -407,10 +496,16 @@ export default function ChatScreen() {
                     pathname: "/quiz",
                     params: {
                       data: encodeURIComponent(
-                        JSON.stringify(result.quiz || [])
+                        JSON.stringify({
+                          questions: result.quiz_questions || [],
+                          title: "Generated Quiz",
+                          id: "temp_quiz",
+                        })
                       ),
                     },
                   });
+                  // Reload quizzes after generation
+                  loadSavedQuizzes();
                 } else {
                   Alert.alert(
                     "Error",
@@ -623,6 +718,62 @@ export default function ChatScreen() {
                         <TouchableOpacity
                           style={styles.deleteIconButton}
                           onPress={() => deleteFlashcard(flashcard.id)}
+                        >
+                          <Ionicons
+                            name="trash-outline"
+                            size={18}
+                            color="#ef4444"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </>
+                )}
+
+                {savedQuizzes.length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
+                      QUIZZES
+                    </Text>
+                    {savedQuizzes.map((quiz, i) => (
+                      <View key={quiz.id} style={styles.sidebarItemRow}>
+                        <TouchableOpacity
+                          style={[
+                            styles.sidebarItem,
+                            styles.sidebarItemWithDelete,
+                          ]}
+                          onPress={() => {
+                            setSidebarVisible(false);
+                            openQuiz(quiz.id);
+                          }}
+                        >
+                          <Ionicons
+                            name="help-circle"
+                            size={20}
+                            color="#6b7280"
+                          />
+                          <View style={styles.flashcardInfo}>
+                            <Text
+                              style={styles.sidebarItemText}
+                              numberOfLines={1}
+                            >
+                              {quiz.title}
+                            </Text>
+                            <View style={styles.quizInfo}>
+                              <Text style={styles.flashcardDate}>
+                                {new Date(quiz.createdAt).toLocaleDateString()}
+                              </Text>
+                              {quiz.isCompleted && (
+                                <Text style={styles.quizScore}>
+                                  Score: {quiz.score}/{quiz.totalQuestions}
+                                </Text>
+                              )}
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.deleteIconButton}
+                          onPress={() => deleteQuiz(quiz.id)}
                         >
                           <Ionicons
                             name="trash-outline"
@@ -854,6 +1005,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#9ca3af",
     marginTop: 2,
+  },
+  quizInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  quizScore: {
+    fontSize: 12,
+    color: "#10b981",
+    fontWeight: "600",
   },
   feedContainer: { flex: 1, backgroundColor: "#fff" },
   emptyState: {

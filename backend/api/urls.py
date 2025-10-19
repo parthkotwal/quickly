@@ -19,5 +19,8 @@ urlpatterns = [
     path('getSavedFlashcards', views.get_saved_flashcards, name='get_saved_flashcards'),
     path('getFlashcard', views.get_flashcard_set, name='get_flashcard_set'),
     path('deleteFlashcard', views.delete_flashcard_set_view, name='delete_flashcard_set'),
-
+    path('getSavedQuizzes', views.get_saved_quizzes, name='get_saved_quizzes'),
+    path('getQuiz', views.get_quiz_set, name='get_quiz_set'),
+    path('submitQuiz', views.submit_quiz_completion, name='submit_quiz_completion'),
+    path('deleteQuiz', views.delete_quiz_set_view, name='delete_quiz_set'),
 ]

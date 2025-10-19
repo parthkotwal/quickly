@@ -17,6 +17,7 @@ POSTS_TABLE = os.getenv('DYNAMODB_POSTS_TABLE', 'quickly-posts')
 LIKES_TABLE = os.getenv('DYNAMODB_LIKES_TABLE', 'quickly-likes')
 USERS_TABLE = os.getenv('DYNAMODB_USERS_TABLE', 'quickly-users')
 FLASHCARDS_TABLE = os.getenv('DYNAMODB_FLASHCARDS_TABLE', 'quickly-flashcards')
+QUIZZES_TABLE = os.getenv('DYNAMODB_QUIZZES_TABLE', 'quickly-quizzes')
 
 def get_posts_table():
     """Get or create posts table"""
@@ -444,4 +445,171 @@ def delete_flashcard_set(user_id, flashcard_id):
         
     except Exception as e:
         print(f"Error deleting flashcard set: {str(e)}")
+        raise e
+
+
+def get_quizzes_table():
+    """Get or create quizzes table"""
+    try:
+        table = dynamodb.Table(QUIZZES_TABLE)
+        table.load()
+        return table
+    except:
+        # Table doesn't exist, create it
+        table = dynamodb.create_table(
+            TableName=QUIZZES_TABLE,
+            KeySchema=[
+                {'AttributeName': 'userId', 'KeyType': 'HASH'},  # Partition key
+                {'AttributeName': 'quizId', 'KeyType': 'RANGE'}  # Sort key
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'userId', 'AttributeType': 'S'},
+                {'AttributeName': 'quizId', 'AttributeType': 'S'},
+            ],
+            ProvisionedThroughput={
+                'ReadCapacityUnits': 5,
+                'WriteCapacityUnits': 5
+            }
+        )
+        table.wait_until_exists()
+        return table
+
+
+def save_quiz_set(user_id, title, questions_data, image_url=None):
+    """Save a new quiz set to DynamoDB"""
+    try:
+        table = get_quizzes_table()
+        quiz_id = f"quiz_{datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')}"
+        
+        item = {
+            'userId': user_id,
+            'quizId': quiz_id,
+            'title': title,
+            'questions': questions_data,
+            'imageUrl': image_url,
+            'isCompleted': False,
+            'score': None,
+            'totalQuestions': len(questions_data),
+            'userAnswers': [],
+            'createdAt': datetime.utcnow().isoformat(),
+            'updatedAt': datetime.utcnow().isoformat()
+        }
+        
+        table.put_item(Item=item)
+        return item
+        
+    except Exception as e:
+        print(f"Error saving quiz set: {str(e)}")
+        raise e
+
+
+def get_user_quizzes(user_id):
+    """Get all quiz sets for a user"""
+    try:
+        table = get_quizzes_table()
+        
+        response = table.query(
+            KeyConditionExpression='userId = :userId',
+            ExpressionAttributeValues={
+                ':userId': user_id
+            },
+            ScanIndexForward=False  # Most recent first
+        )
+        
+        quizzes = []
+        for item in response.get('Items', []):
+            quiz = {
+                'id': item['quizId'],
+                'title': item['title'],
+                'createdAt': item['createdAt'],
+                'imageUrl': item.get('imageUrl'),
+                'questionCount': len(item.get('questions', [])),
+                'isCompleted': item.get('isCompleted', False),
+                'score': item.get('score'),
+                'totalQuestions': item.get('totalQuestions', 0)
+            }
+            quizzes.append(quiz)
+        
+        return quizzes
+        
+    except Exception as e:
+        print(f"Error getting user quizzes: {str(e)}")
+        raise e
+
+
+def get_quiz_by_id(user_id, quiz_id):
+    """Get specific quiz set by ID"""
+    try:
+        table = get_quizzes_table()
+        
+        response = table.get_item(
+            Key={
+                'userId': user_id,
+                'quizId': quiz_id
+            }
+        )
+        
+        if 'Item' not in response:
+            return None
+            
+        item = response['Item']
+        return {
+            'id': item['quizId'],
+            'title': item['title'],
+            'questions': item['questions'],
+            'createdAt': item['createdAt'],
+            'imageUrl': item.get('imageUrl'),
+            'isCompleted': item.get('isCompleted', False),
+            'score': item.get('score'),
+            'totalQuestions': item.get('totalQuestions', 0),
+            'userAnswers': item.get('userAnswers', [])
+        }
+        
+    except Exception as e:
+        print(f"Error getting quiz by ID: {str(e)}")
+        raise e
+
+
+def submit_quiz_score(user_id, quiz_id, user_answers, score):
+    """Submit quiz completion with score and answers"""
+    try:
+        table = get_quizzes_table()
+        
+        table.update_item(
+            Key={
+                'userId': user_id,
+                'quizId': quiz_id
+            },
+            UpdateExpression='SET isCompleted = :completed, score = :score, userAnswers = :answers, updatedAt = :updated',
+            ExpressionAttributeValues={
+                ':completed': True,
+                ':score': score,
+                ':answers': user_answers,
+                ':updated': datetime.utcnow().isoformat()
+            }
+        )
+        
+        return {'submitted': True, 'quizId': quiz_id, 'score': score}
+        
+    except Exception as e:
+        print(f"Error submitting quiz score: {str(e)}")
+        raise e
+
+
+def delete_quiz_set(user_id, quiz_id):
+    """Delete a quiz set"""
+    try:
+        table = get_quizzes_table()
+        
+        table.delete_item(
+            Key={
+                'userId': user_id,
+                'quizId': quiz_id
+            }
+        )
+        
+        return {'deleted': True, 'quizId': quiz_id}
+        
+    except Exception as e:
+        print(f"Error deleting quiz set: {str(e)}")
         raise e
