@@ -9,10 +9,11 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Animated,
 } from "react-native";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { API_URL } from "../config";
@@ -47,7 +48,9 @@ interface FeedPost {
 
 export default function ChatScreen() {
   const router = useRouter();
-  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const params = useLocalSearchParams();
+
+  const [sidebarVisible, setSidebarVisible] = useState(false);
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
   const [currentTopic, setCurrentTopic] = useState<string | null>(null);
@@ -58,13 +61,24 @@ export default function ChatScreen() {
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
-  // Load feed data when screen comes into focus
+  const slideAnim = useRef(new Animated.Value(-300)).current;
+
+  useEffect(() => {
+    Animated.timing(slideAnim, {
+      toValue: sidebarVisible ? 0 : -300,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [sidebarVisible]);
+
   useFocusEffect(
     useCallback(() => {
       setOffset(0);
       setFeedPosts([]);
-      loadFeedData();
-    }, [])
+      const newTopic = params.newTopic as string;
+      if (newTopic) loadFeedData(newTopic);
+      else loadFeedData();
+    }, [params.newTopic])
   );
 
   const loadFeedData = async (filterTopic?: string, append = false) => {
@@ -79,9 +93,8 @@ export default function ChatScreen() {
           `${API_URL}/getTopics?userId=${userId}`
         );
         const topicsData = await topicsResponse.json();
-        if (topicsResponse.ok && topicsData.topics) {
+        if (topicsResponse.ok && topicsData.topics)
           setTopics(topicsData.topics);
-        }
       }
 
       if (userId) {
@@ -108,8 +121,6 @@ export default function ChatScreen() {
         }
 
         if (response.ok && data.posts) {
-          let posts = data.posts;
-
           const likedResponse = await fetch(
             `${API_URL}/getLikedPosts?userId=${userId}`
           );
@@ -118,7 +129,7 @@ export default function ChatScreen() {
             likedData.posts?.map((p: any) => p.postId) || []
           );
 
-          const postsWithMetrics = posts.map((post: any) => ({
+          const postsWithMetrics = data.posts.map((post: any) => ({
             ...post,
             likes: post.likes || Math.floor(Math.random() * 10000) + 100,
             comments: post.comments || Math.floor(Math.random() * 500) + 10,
@@ -143,15 +154,11 @@ export default function ChatScreen() {
   };
 
   const loadMore = () => {
-    if (hasMore && !loading && !currentTopic) {
-      loadFeedData(undefined, true);
-    }
+    if (hasMore && !loading && !currentTopic) loadFeedData(undefined, true);
   };
 
-  const formatNumber = (num: number): string => {
-    if (num >= 1000) return (num / 1000).toFixed(1) + "K";
-    return num.toString();
-  };
+  const formatNumber = (num: number): string =>
+    num >= 1000 ? (num / 1000).toFixed(1) + "K" : num.toString();
 
   const deleteFeed = async (topic: string) => {
     try {
@@ -161,27 +168,20 @@ export default function ChatScreen() {
         `${API_URL}/deleteFeed?userId=${userId}&topic=${encodeURIComponent(
           topic
         )}`,
-        {
-          method: "DELETE",
-        }
+        { method: "DELETE" }
       );
-
       if (response.ok) {
-        console.log(`✅ Deleted feed: ${topic}`);
         if (currentTopic === topic) setCurrentTopic(null);
-        loadFeedData(
-          currentTopic === topic ? undefined : currentTopic || undefined
-        );
+        loadFeedData(currentTopic === topic ? undefined : currentTopic);
       }
     } catch (error) {
       console.error("Error deleting feed:", error);
     }
   };
 
-  const toggleLike = async (index: number): Promise<void> => {
+  const toggleLike = async (index: number) => {
     const post = feedPosts[index];
     const newLikedState = !post.isLiked;
-
     setFeedPosts((prev) =>
       prev.map((p, i) =>
         i === index
@@ -211,9 +211,8 @@ export default function ChatScreen() {
     }
   };
 
-  const getRandomName = (index: number): string => {
-    return RANDOM_NAMES[index % RANDOM_NAMES.length];
-  };
+  const getRandomName = (index: number): string =>
+    RANDOM_NAMES[index % RANDOM_NAMES.length];
 
   const handleUpload = async () => {
     const permissionResult =
@@ -233,171 +232,152 @@ export default function ChatScreen() {
       quality: 1,
     });
 
-    if (!result.canceled) {
-      const imageUri = result.assets[0].uri;
-      const userId = await AsyncStorage.getItem("userId");
+    if (result.canceled) return;
+    const imageUri = result.assets[0].uri;
+    const userId = await AsyncStorage.getItem("userId");
+    if (!userId) {
+      Alert.alert("Error", "User not logged in");
+      return;
+    }
 
-      if (!userId) {
-        Alert.alert("Error", "User not logged in");
+    try {
+      const formData = new FormData();
+      formData.append("userId", userId);
+      formData.append("file", {
+        uri: imageUri,
+        name: "upload.jpg",
+        type: "image/jpeg",
+      } as any);
+      const response = await fetch(`${API_URL}/uploadImage`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        Alert.alert("❌ Upload Failed", data.error || "Unknown error");
         return;
       }
 
-      try {
-        const formData = new FormData();
-        formData.append("userId", userId);
-        formData.append("file", {
-          uri: imageUri,
-          name: "upload.jpg",
-          type: "image/jpeg",
-        } as any);
-
-        const response = await fetch(`${API_URL}/uploadImage`, {
-          method: "POST",
-          body: formData,
-          headers: {
-            "Content-Type": "multipart/form-data",
+      Alert.alert(
+        "Choose an option",
+        "What would you like to create with this image?",
+        [
+          {
+            text: "Flashcards/Notes",
+            onPress: async () => {
+              setIsGeneratingFlashcards(true);
+              try {
+                const formData = new FormData();
+                formData.append("userId", userId);
+                formData.append("file", {
+                  uri: imageUri,
+                  name: "upload.jpg",
+                  type: "image/jpeg",
+                } as any);
+                const res = await fetch(`${API_URL}/generateFlashcards`, {
+                  method: "POST",
+                  body: formData,
+                });
+                const result = await res.json();
+                if (res.ok) {
+                  router.push({
+                    pathname: "/flashcards",
+                    params: {
+                      data: encodeURIComponent(
+                        JSON.stringify(result.flashcards || [])
+                      ),
+                    },
+                  });
+                } else {
+                  Alert.alert(
+                    "Error",
+                    result.error || "Failed to generate flashcards."
+                  );
+                }
+              } catch {
+                Alert.alert(
+                  "Error",
+                  "Something went wrong while generating flashcards."
+                );
+              } finally {
+                setIsGeneratingFlashcards(false);
+              }
+            },
           },
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          // Show options for what to do with the uploaded image
-          Alert.alert(
-            "Choose an option",
-            "What would you like to create with this image?",
-            [
-              {
-                text: "Flashcards/Notes",
-                onPress: async () => {
-                  setIsGeneratingFlashcards(true);
-                  try {
-                    const formData = new FormData();
-                    formData.append("userId", userId);
-                    formData.append("file", {
-                      uri: imageUri,
-                      name: "upload.jpg",
-                      type: "image/jpeg",
-                    } as any);
-
-                    const res = await fetch(`${API_URL}/generateFlashcards`, {
-                      method: "POST",
-                      body: formData,
-                    });
-                    const result = await res.json();
-
-                    if (res.ok) {
-                      router.push({
-                        pathname: "/flashcards",
-                        params: {
-                          data: encodeURIComponent(
-                            JSON.stringify(result.flashcards || [])
-                          ),
-                        },
-                      });
-                    } else {
-                      Alert.alert(
-                        "Error",
-                        result.error || "Failed to generate flashcards."
-                      );
-                    }
-                  } catch (error) {
-                    Alert.alert(
-                      "Error",
-                      "Something went wrong while generating flashcards."
-                    );
-                  } finally {
-                    setIsGeneratingFlashcards(false);
-                  }
-                },
-              },
-              {
-                text: "Quizzes",
-                onPress: async () => {
-                  setIsGeneratingQuiz(true);
-                  try {
-                    const formData = new FormData();
-                    formData.append("userId", userId);
-                    formData.append("file", {
-                      uri: imageUri,
-                      name: "upload.jpg",
-                      type: "image/jpeg",
-                    } as any);
-
-                    const res = await fetch(`${API_URL}/generateQuiz`, {
-                      method: "POST",
-                      body: formData,
-                    });
-                    const result = await res.json();
-
-                    if (res.ok) {
-                      router.push({
-                        pathname: "/quiz",
-                        params: {
-                          data: encodeURIComponent(
-                            JSON.stringify(result.quiz || [])
-                          ),
-                        },
-                      });
-                    } else {
-                      Alert.alert(
-                        "Error",
-                        result.error || "Failed to generate quiz."
-                      );
-                    }
-                  } catch (error) {
-                    Alert.alert(
-                      "Error",
-                      "Something went wrong while generating quiz."
-                    );
-                  } finally {
-                    setIsGeneratingQuiz(false);
-                  }
-                },
-              },
-              {
-                text: "Cancel",
-                style: "cancel",
-              },
-            ]
-          );
-        } else {
-          Alert.alert("❌ Upload Failed", data.error || "Unknown error");
-        }
-      } catch (error) {
-        console.error("Upload error:", error);
-        Alert.alert("Error", "Something went wrong while uploading.");
-      }
+          {
+            text: "Quizzes",
+            onPress: async () => {
+              setIsGeneratingQuiz(true);
+              try {
+                const formData = new FormData();
+                formData.append("userId", userId);
+                formData.append("file", {
+                  uri: imageUri,
+                  name: "upload.jpg",
+                  type: "image/jpeg",
+                } as any);
+                const res = await fetch(`${API_URL}/generateQuiz`, {
+                  method: "POST",
+                  body: formData,
+                });
+                const result = await res.json();
+                if (res.ok) {
+                  router.push({
+                    pathname: "/quiz",
+                    params: {
+                      data: encodeURIComponent(
+                        JSON.stringify(result.quiz || [])
+                      ),
+                    },
+                  });
+                } else {
+                  Alert.alert(
+                    "Error",
+                    result.error || "Failed to generate quiz."
+                  );
+                }
+              } catch {
+                Alert.alert(
+                  "Error",
+                  "Something went wrong while generating quiz."
+                );
+              } finally {
+                setIsGeneratingQuiz(false);
+              }
+            },
+          },
+          { text: "Cancel", style: "cancel" },
+        ]
+      );
+    } catch (error) {
+      console.error("Upload error:", error);
+      Alert.alert("Error", "Something went wrong while uploading.");
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.headerLeft}
-          onPress={() => setDropdownVisible(!dropdownVisible)}
+          onPress={() => setSidebarVisible(!sidebarVisible)}
+          activeOpacity={0.7}
         >
+          <Ionicons name="menu" size={28} color="#111827" />
           <Text style={styles.headerTitle}>Quickly</Text>
-          <Ionicons name="chevron-down" size={20} color="#111827" />
         </TouchableOpacity>
-
         <View style={styles.headerRight}>
-          {/* Upload (Cloud) Icon */}
           <TouchableOpacity style={styles.iconButton} onPress={handleUpload}>
             <Ionicons name="cloud-upload-outline" size={28} color="#111827" />
           </TouchableOpacity>
-
-          {/* Liked */}
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push("/liked")}
           >
             <Ionicons name="heart-outline" size={28} color="#111827" />
           </TouchableOpacity>
-
-          {/* Profile */}
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push("/settings")}
@@ -407,93 +387,143 @@ export default function ChatScreen() {
         </View>
       </View>
 
-      {/* Dropdown */}
-      {dropdownVisible && (
-        <View style={styles.dropdown}>
+      {/* SIDEBAR */}
+      <Modal
+        visible={sidebarVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSidebarVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={() => setSidebarVisible(false)}
+        >
           <TouchableOpacity
-            style={styles.dropdownItem}
-            onPress={() => {
-              setDropdownVisible(false);
-              router.push("/chatbot");
-            }}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
           >
-            <Ionicons name="add-circle-outline" size={20} color="#111827" />
-            <Text style={styles.dropdownText}>New Chat</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.dropdownItem,
-              !currentTopic && styles.dropdownItemActive,
-            ]}
-            onPress={() => {
-              setDropdownVisible(false);
-              loadFeedData();
-            }}
-          >
-            <Ionicons
-              name="globe-outline"
-              size={20}
-              color={!currentTopic ? "#6366f1" : "#111827"}
-            />
-            <Text
+            <Animated.View
               style={[
-                styles.dropdownText,
-                !currentTopic && styles.dropdownTextActive,
+                styles.sidebar,
+                { transform: [{ translateX: slideAnim }] },
               ]}
             >
-              Public Feed
-            </Text>
-          </TouchableOpacity>
+              <View style={styles.sidebarHeader}>
+                <Text style={styles.sidebarTitle}>Quickly</Text>
+                <TouchableOpacity onPress={() => setSidebarVisible(false)}>
+                  <Ionicons name="close" size={28} color="#111827" />
+                </TouchableOpacity>
+              </View>
 
-          {topics.map((topic, index) => (
-            <View key={index} style={styles.dropdownItemRow}>
               <TouchableOpacity
-                style={[
-                  styles.dropdownItem,
-                  currentTopic === topic && styles.dropdownItemActive,
-                  styles.dropdownItemWithDelete,
-                ]}
+                style={styles.newChatButton}
                 onPress={() => {
-                  setDropdownVisible(false);
-                  loadFeedData(topic);
+                  setSidebarVisible(false);
+                  router.push("/chatbot");
                 }}
               >
-                <Ionicons
-                  name="book-outline"
-                  size={20}
-                  color={currentTopic === topic ? "#6366f1" : "#111827"}
-                />
-                <Text
-                  style={[
-                    styles.dropdownText,
-                    currentTopic === topic && styles.dropdownTextActive,
-                  ]}
-                >
-                  {topic}
-                </Text>
+                <Ionicons name="add-circle" size={22} color="#fff" />
+                <Text style={styles.newChatText}>New Chat</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => deleteFeed(topic)}
-              >
-                <Ionicons name="trash-outline" size={18} color="#ef4444" />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-      )}
 
-      {/* Feed */}
+              <View style={styles.divider} />
+              <ScrollView
+                style={styles.sidebarContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={styles.sectionTitle}>FEEDS</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.sidebarItem,
+                    !currentTopic && styles.sidebarItemActive,
+                  ]}
+                  onPress={() => {
+                    setSidebarVisible(false);
+                    loadFeedData();
+                  }}
+                >
+                  <Ionicons
+                    name="globe"
+                    size={20}
+                    color={!currentTopic ? "#6366f1" : "#6b7280"}
+                  />
+                  <Text
+                    style={[
+                      styles.sidebarItemText,
+                      !currentTopic && styles.sidebarItemTextActive,
+                    ]}
+                  >
+                    Public Feed
+                  </Text>
+                </TouchableOpacity>
+                {topics.length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
+                      MY TOPICS
+                    </Text>
+                    {topics.map((topic, i) => (
+                      <View key={i} style={styles.sidebarItemRow}>
+                        <TouchableOpacity
+                          style={[
+                            styles.sidebarItem,
+                            currentTopic === topic && styles.sidebarItemActive,
+                            styles.sidebarItemWithDelete,
+                          ]}
+                          onPress={() => {
+                            setSidebarVisible(false);
+                            loadFeedData(topic);
+                          }}
+                        >
+                          <Ionicons
+                            name="book"
+                            size={20}
+                            color={
+                              currentTopic === topic ? "#6366f1" : "#6b7280"
+                            }
+                          />
+                          <Text
+                            style={[
+                              styles.sidebarItemText,
+                              currentTopic === topic &&
+                                styles.sidebarItemTextActive,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {topic}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.deleteIconButton}
+                          onPress={() => deleteFeed(topic)}
+                        >
+                          <Ionicons
+                            name="trash-outline"
+                            size={18}
+                            color="#ef4444"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </>
+                )}
+              </ScrollView>
+            </Animated.View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* FEED */}
       <ScrollView
         style={styles.feedContainer}
         showsVerticalScrollIndicator={false}
         onScroll={({ nativeEvent }) => {
           const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-          const isCloseToBottom =
-            layoutMeasurement.height + contentOffset.y >=
-            contentSize.height - 20;
-          if (isCloseToBottom) loadMore();
+          if (
+            contentSize.height - (layoutMeasurement.height + contentOffset.y) <
+            800
+          )
+            loadMore();
         }}
         scrollEventThrottle={400}
       >
@@ -506,78 +536,63 @@ export default function ChatScreen() {
             </Text>
           </View>
         ) : (
-          feedPosts.map((post, index) => {
-            const likedByName = getRandomName(index);
-            return (
-              <View key={index} style={styles.postContainer}>
-                <View style={styles.imageContainer}>
-                  <Image
-                    source={{ uri: post.imageUrl }}
-                    style={styles.postImage}
-                    resizeMode="contain"
-                  />
-                </View>
-
-                <View style={styles.postActions}>
-                  <View style={styles.actionsLeft}>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => toggleLike(index)}
-                    >
-                      <Ionicons
-                        name={post.isLiked ? "heart" : "heart-outline"}
-                        size={28}
-                        color={post.isLiked ? "#ef4444" : "#111827"}
-                      />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Ionicons
-                        name="chatbubble-outline"
-                        size={28}
-                        color="#111827"
-                      />
-                    </TouchableOpacity>
-                  </View>
-
+          feedPosts.map((post, i) => (
+            <View key={i} style={styles.postContainer}>
+              <View style={styles.imageContainer}>
+                <Image
+                  source={{ uri: post.imageUrl }}
+                  style={styles.postImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.postActions}>
+                <View style={styles.actionsLeft}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => toggleLike(i)}
+                  >
+                    <Ionicons
+                      name={post.isLiked ? "heart" : "heart-outline"}
+                      size={28}
+                      color={post.isLiked ? "#ef4444" : "#111827"}
+                    />
+                  </TouchableOpacity>
                   <TouchableOpacity style={styles.actionButton}>
                     <Ionicons
-                      name="paper-plane-outline"
+                      name="chatbubble-outline"
                       size={28}
                       color="#111827"
                     />
                   </TouchableOpacity>
                 </View>
-
-                <View style={styles.likedBySection}>
-                  <Text style={styles.likedByText}>
-                    Liked by{" "}
-                    <Text style={styles.likedByName}>{likedByName}</Text> and{" "}
-                    <Text style={styles.likedByName}>
-                      {formatNumber(post.likes - 1)} others
-                    </Text>
-                  </Text>
-                </View>
-
-                <View style={styles.captionContainer}>
-                  <Text style={styles.captionText}>
-                    <Text style={styles.usernameText}>
-                      u/{(post as any).username || "anonymous"}
-                    </Text>{" "}
-                    {post.text}
-                  </Text>
-                </View>
-
-                <TouchableOpacity style={styles.viewCommentsButton}>
-                  <Text style={styles.viewCommentsText}>
-                    View all {formatNumber(post.comments)} comments
-                  </Text>
+                <TouchableOpacity style={styles.actionButton}>
+                  <Ionicons
+                    name="paper-plane-outline"
+                    size={28}
+                    color="#111827"
+                  />
                 </TouchableOpacity>
               </View>
-            );
-          })
+              <View style={styles.likedBySection}>
+                <Text style={styles.likedByText}>
+                  Liked by{" "}
+                  <Text style={styles.likedByName}>{getRandomName(i)}</Text> and{" "}
+                  <Text style={styles.likedByName}>
+                    {formatNumber(post.likes - 1)} others
+                  </Text>
+                </Text>
+              </View>
+              <View style={styles.captionContainer}>
+                <Text style={styles.captionText}>
+                  <Text style={styles.usernameText}>
+                    u/{(post as any).username || "anonymous"}
+                  </Text>{" "}
+                  {post.text}
+                </Text>
+              </View>
+            </View>
+          ))
         )}
-
         {loading && feedPosts.length > 0 && (
           <View style={styles.loadingMore}>
             <Text style={styles.loadingText}>Loading more...</Text>
@@ -590,12 +605,8 @@ export default function ChatScreen() {
         )}
       </ScrollView>
 
-      {/* Loading Modal for Flashcards */}
-      <Modal
-        visible={isGeneratingFlashcards}
-        transparent={true}
-        animationType="fade"
-      >
+      {/* GENERATING FLASHCARDS */}
+      <Modal visible={isGeneratingFlashcards} transparent animationType="fade">
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#6366f1" />
@@ -606,8 +617,8 @@ export default function ChatScreen() {
         </View>
       </Modal>
 
-      {/* Loading Modal for Quiz */}
-      <Modal visible={isGeneratingQuiz} transparent={true} animationType="fade">
+      {/* GENERATING QUIZ */}
+      <Modal visible={isGeneratingQuiz} transparent animationType="fade">
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#6366f1" />
@@ -632,28 +643,82 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   headerTitle: { fontSize: 24, fontWeight: "bold", color: "#111827" },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 16 },
   iconButton: { padding: 4 },
-  dropdown: {
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-start",
+  },
+  sidebar: {
+    width: 280,
+    height: "100%",
     backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  sidebarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
-  dropdownItemRow: { flexDirection: "row", alignItems: "center" },
-  dropdownItem: {
+  sidebarTitle: { fontSize: 24, fontWeight: "bold", color: "#111827" },
+  newChatButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#6366f1",
+    marginHorizontal: 20,
+    marginTop: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  newChatText: { fontSize: 16, fontWeight: "600", color: "#fff" },
+  divider: {
+    height: 1,
+    backgroundColor: "#e5e7eb",
+    marginHorizontal: 20,
+    marginVertical: 20,
+  },
+  sidebarContent: { flex: 1, paddingHorizontal: 20 },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#9ca3af",
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  sidebarItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 4,
   },
-  dropdownItemWithDelete: { flex: 1, paddingRight: 0 },
-  dropdownItemActive: { backgroundColor: "#eef2ff" },
-  deleteButton: { padding: 16, paddingLeft: 8, paddingRight: 20 },
-  dropdownText: { fontSize: 16, color: "#111827", fontWeight: "500" },
-  dropdownTextActive: { color: "#6366f1", fontWeight: "600" },
+  sidebarItemActive: { backgroundColor: "#eef2ff" },
+  sidebarItemRow: { flexDirection: "row", alignItems: "center" },
+  sidebarItemWithDelete: { flex: 1 },
+  sidebarItemText: {
+    fontSize: 15,
+    color: "#6b7280",
+    fontWeight: "500",
+    flex: 1,
+  },
+  sidebarItemTextActive: { color: "#6366f1", fontWeight: "600" },
+  deleteIconButton: { padding: 8 },
   feedContainer: { flex: 1, backgroundColor: "#fff" },
   emptyState: {
     flex: 1,
@@ -700,15 +765,13 @@ const styles = StyleSheet.create({
   captionContainer: { paddingHorizontal: 14, paddingBottom: 4 },
   captionText: { fontSize: 14, color: "#000", lineHeight: 20 },
   usernameText: { fontWeight: "bold", color: "#000" },
-  viewCommentsButton: { paddingHorizontal: 14, paddingTop: 4 },
-  viewCommentsText: { fontSize: 14, color: "#737373" },
-  loadingMore: { padding: 20, alignItems: "center" },
-  loadingText: { fontSize: 16, color: "#6b7280" },
-  endOfFeed: { padding: 20, alignItems: "center" },
-  endOfFeedText: { fontSize: 16, color: "#6b7280" },
+  loadingMore: { padding: 16, alignItems: "center" },
+  loadingText: { color: "#6b7280" },
+  endOfFeed: { padding: 16, alignItems: "center" },
+  endOfFeedText: { color: "#6b7280" },
   loadingOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },

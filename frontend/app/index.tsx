@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 
@@ -17,7 +17,9 @@ export default function SplashScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Quickly</Text>
-      <Text style={styles.subtitle}>Welcome</Text>
+      <Text style={styles.subtitle}>
+        Your Feed Just Got <Text style={styles.smarterText}>Smarter</Text>
+      </Text>
     </View>
   );
 }
@@ -38,5 +40,10 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 20,
     color: '#e0e7ff',
+  },
+  smarterText: {
+    fontWeight: '900',
+    color: '#fff',
+    fontStyle: 'italic',
   },
 });
