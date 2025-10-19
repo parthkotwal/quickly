@@ -203,6 +203,7 @@ export default function ChatScreen() {
         <TouchableOpacity
           style={styles.headerLeft}
           onPress={() => setSidebarVisible(!sidebarVisible)}
+          activeOpacity={0.7}
         >
           <Ionicons name="menu" size={28} color="#111827" />
           <Text style={styles.headerTitle}>Quickly</Text>
@@ -212,12 +213,14 @@ export default function ChatScreen() {
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push('/liked')}
+            activeOpacity={0.7}
           >
             <Ionicons name="heart-outline" size={28} color="#111827" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push('/settings')}
+            activeOpacity={0.7}
           >
             <Ionicons name="person-circle" size={32} color="#6366f1" />
           </TouchableOpacity>
@@ -228,7 +231,7 @@ export default function ChatScreen() {
       <Modal
         visible={sidebarVisible}
         transparent={true}
-        animationType="none"
+        animationType="fade"
         onRequestClose={() => setSidebarVisible(false)}
       >
         <TouchableOpacity
@@ -236,13 +239,13 @@ export default function ChatScreen() {
           activeOpacity={1}
           onPress={() => setSidebarVisible(false)}
         >
-          <Animated.View
-            style={[
-              styles.sidebar,
-              { transform: [{ translateX: slideAnim }] }
-            ]}
-            onStartShouldSetResponder={() => true}
-          >
+          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+            <Animated.View
+              style={[
+                styles.sidebar,
+                { transform: [{ translateX: slideAnim }] }
+              ]}
+            >
             <View style={styles.sidebarHeader}>
               <Text style={styles.sidebarTitle}>Quickly</Text>
               <TouchableOpacity onPress={() => setSidebarVisible(false)}>
@@ -256,6 +259,7 @@ export default function ChatScreen() {
                 setSidebarVisible(false);
                 router.push('/chatbot');
               }}
+              activeOpacity={0.8}
             >
               <Ionicons name="add-circle" size={22} color="#fff" />
               <Text style={styles.newChatText}>New Chat</Text>
@@ -272,6 +276,7 @@ export default function ChatScreen() {
                   setSidebarVisible(false);
                   loadFeedData();
                 }}
+                activeOpacity={0.7}
               >
                 <Ionicons name="globe" size={20} color={!currentTopic ? "#6366f1" : "#6b7280"} />
                 <Text style={[styles.sidebarItemText, !currentTopic && styles.sidebarItemTextActive]}>
@@ -290,6 +295,7 @@ export default function ChatScreen() {
                           setSidebarVisible(false);
                           loadFeedData(topic);
                         }}
+                        activeOpacity={0.7}
                       >
                         <Ionicons name="book" size={20} color={currentTopic === topic ? "#6366f1" : "#6b7280"} />
                         <Text style={[styles.sidebarItemText, currentTopic === topic && styles.sidebarItemTextActive]} numberOfLines={1}>
@@ -299,6 +305,7 @@ export default function ChatScreen() {
                       <TouchableOpacity
                         style={styles.deleteIconButton}
                         onPress={() => deleteFeed(topic)}
+                        activeOpacity={0.7}
                       >
                         <Ionicons name="trash-outline" size={18} color="#ef4444" />
                       </TouchableOpacity>
@@ -308,6 +315,7 @@ export default function ChatScreen() {
               )}
             </ScrollView>
           </Animated.View>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
@@ -317,7 +325,9 @@ export default function ChatScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={({ nativeEvent }) => {
           const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 20) {
+          // Load more when user is 800px from the bottom (about 2 posts before end)
+          const distanceFromBottom = contentSize.height - (layoutMeasurement.height + contentOffset.y);
+          if (distanceFromBottom < 800) {
             loadMore();
           }
         }}
@@ -347,6 +357,7 @@ export default function ChatScreen() {
                     <TouchableOpacity
                       style={styles.actionButton}
                       onPress={() => toggleLike(index)}
+                      activeOpacity={0.6}
                     >
                       <Ionicons
                         name={post.isLiked ? "heart" : "heart-outline"}
@@ -354,11 +365,11 @@ export default function ChatScreen() {
                         color={post.isLiked ? "#ef4444" : "#111827"}
                       />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton}>
+                    <TouchableOpacity style={styles.actionButton} activeOpacity={0.6}>
                       <Ionicons name="chatbubble-outline" size={28} color="#111827" />
                     </TouchableOpacity>
                   </View>
-                  <TouchableOpacity style={styles.actionButton}>
+                  <TouchableOpacity style={styles.actionButton} activeOpacity={0.6}>
                     <Ionicons name="paper-plane-outline" size={28} color="#111827" />
                   </TouchableOpacity>
                 </View>
@@ -406,6 +417,7 @@ export default function ChatScreen() {
           <TouchableOpacity
             style={styles.editFeedButton}
             onPress={() => router.push({ pathname: '/chatbot', params: { topic: currentTopic } })}
+            activeOpacity={0.8}
           >
             <Ionicons name="create-outline" size={16} color="#fff" />
             <Text style={styles.editFeedText}>Edit</Text>

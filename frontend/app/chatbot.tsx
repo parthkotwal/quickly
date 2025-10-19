@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, ActivityIndicator, Modal, Animated } from 'react-native';
+import { StyleSheet, View, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Modal, Animated } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -16,6 +16,8 @@ export default function ChatbotScreen() {
   const [inputText, setInputText] = useState('');
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressText, setProgressText] = useState('');
   const [topics, setTopics] = useState<string[]>([]);
   const slideAnim = useRef(new Animated.Value(-300)).current;
 
@@ -77,16 +79,34 @@ export default function ChatbotScreen() {
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
     setIsGenerating(true);
+    setProgress(0);
+    setProgressText('Starting...');
 
     const loadingMessage = { id: Date.now() + 1, text: 'Generating your personalized learning feed...', isBot: true };
     setMessages(prev => [...prev, loadingMessage]);
 
     try {
+      // Simulate progress updates (8 posts total)
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          const next = Math.min(prev + 0.02, 0.95);
+          if (next < 0.2) setProgressText('Generating image queries...');
+          else if (next < 0.5) setProgressText('Fetching images...');
+          else if (next < 0.8) setProgressText('Creating captions...');
+          else setProgressText('Finalizing posts...');
+          return next;
+        });
+      }, 100);
+
       const response = await fetch(`${API_URL}/generateFeed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic: finalPrompt }),
       });
+
+      clearInterval(progressInterval);
+      setProgress(1);
+      setProgressText('Complete!');
 
       const data = await response.json();
       if (response.ok) {
@@ -106,24 +126,28 @@ export default function ChatbotScreen() {
         });
 
         setMessages(prev => prev.slice(0, -1).concat([
-          { id: Date.now() + 2, text: `Great! I've ${previousPrompt ? 'expanded' : 'created'} your feed for "${previousPrompt || finalPrompt}". Redirecting to your feed...`, isBot: true }
+          { id: Date.now() + 2, text: `Great! I've ${previousPrompt ? 'expanded' : 'created'} your feed with 8 posts for "${previousPrompt || finalPrompt}". Redirecting to your feed...`, isBot: true }
         ]));
 
         setTimeout(() => {
           setIsGenerating(false);
+          setProgress(0);
           router.replace({
             pathname: '/chat',
             params: { newTopic: previousPrompt || finalPrompt }
           });
         }, 1500);
       } else {
+        clearInterval(progressInterval);
         setIsGenerating(false);
+        setProgress(0);
         setMessages(prev => prev.slice(0, -1).concat([
           { id: Date.now() + 2, text: `Sorry, I encountered an error: ${data.error}`, isBot: true }
         ]));
       }
     } catch (error) {
       setIsGenerating(false);
+      setProgress(0);
       setMessages(prev => prev.slice(0, -1).concat([
         { id: Date.now() + 2, text: 'Sorry, I could not connect to the server. Please make sure the backend is running.', isBot: true }
       ]));
@@ -137,6 +161,7 @@ export default function ChatbotScreen() {
         <TouchableOpacity
           style={styles.headerLeft}
           onPress={() => setSidebarVisible(!sidebarVisible)}
+          activeOpacity={0.7}
         >
           <Ionicons name="menu" size={28} color="#111827" />
           <Text style={styles.headerTitle}>{previousPrompt ? 'Editing Feed' : 'New Chat'}</Text>
@@ -146,12 +171,14 @@ export default function ChatbotScreen() {
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push('/liked')}
+            activeOpacity={0.7}
           >
             <Ionicons name="heart-outline" size={28} color="#111827" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push('/settings')}
+            activeOpacity={0.7}
           >
             <Ionicons name="person-circle" size={32} color="#6366f1" />
           </TouchableOpacity>
@@ -170,7 +197,7 @@ export default function ChatbotScreen() {
       <Modal
         visible={sidebarVisible}
         transparent={true}
-        animationType="none"
+        animationType="fade"
         onRequestClose={() => setSidebarVisible(false)}
       >
         <TouchableOpacity
@@ -178,16 +205,19 @@ export default function ChatbotScreen() {
           activeOpacity={1}
           onPress={() => setSidebarVisible(false)}
         >
-          <Animated.View
-            style={[
-              styles.sidebar,
-              { transform: [{ translateX: slideAnim }] }
-            ]}
-            onStartShouldSetResponder={() => true}
-          >
+          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+            <Animated.View
+              style={[
+                styles.sidebar,
+                { transform: [{ translateX: slideAnim }] }
+              ]}
+            >
             <View style={styles.sidebarHeader}>
               <Text style={styles.sidebarTitle}>Quickly</Text>
-              <TouchableOpacity onPress={() => setSidebarVisible(false)}>
+              <TouchableOpacity
+                onPress={() => setSidebarVisible(false)}
+                activeOpacity={0.7}
+              >
                 <Ionicons name="close" size={28} color="#111827" />
               </TouchableOpacity>
             </View>
@@ -198,6 +228,7 @@ export default function ChatbotScreen() {
                 setSidebarVisible(false);
                 router.push('/chatbot');
               }}
+              activeOpacity={0.8}
             >
               <Ionicons name="add-circle" size={22} color="#fff" />
               <Text style={styles.newChatText}>New Chat</Text>
@@ -214,6 +245,7 @@ export default function ChatbotScreen() {
                   setSidebarVisible(false);
                   router.replace('/chat');
                 }}
+                activeOpacity={0.7}
               >
                 <Ionicons name="globe" size={20} color="#6b7280" />
                 <Text style={styles.sidebarItemText}>Public Feed</Text>
@@ -230,6 +262,7 @@ export default function ChatbotScreen() {
                           setSidebarVisible(false);
                           router.push({ pathname: '/chatbot', params: { topic } });
                         }}
+                        activeOpacity={0.7}
                       >
                         <Ionicons name="book" size={20} color={previousPrompt === topic ? "#6366f1" : "#6b7280"} />
                         <Text style={[styles.sidebarItemText, previousPrompt === topic && styles.sidebarItemTextActive]} numberOfLines={1}>
@@ -239,6 +272,7 @@ export default function ChatbotScreen() {
                       <TouchableOpacity
                         style={styles.deleteIconButton}
                         onPress={() => deleteFeed(topic)}
+                        activeOpacity={0.7}
                       >
                         <Ionicons name="trash-outline" size={18} color="#ef4444" />
                       </TouchableOpacity>
@@ -248,6 +282,7 @@ export default function ChatbotScreen() {
               )}
             </ScrollView>
           </Animated.View>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
@@ -284,8 +319,13 @@ export default function ChatbotScreen() {
                   {message.text}
                 </Text>
                 {isGenerating && message.text.includes('Generating') && (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="small" color="#6366f1" />
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressBarBackground}>
+                      <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+                    </View>
+                    <Text style={styles.progressText}>
+                      {progressText} {Math.round(progress * 100)}%
+                    </Text>
                   </View>
                 )}
               </View>
@@ -307,6 +347,7 @@ export default function ChatbotScreen() {
             style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
             onPress={handleSend}
             disabled={!inputText.trim() && !previousPrompt}
+            activeOpacity={0.8}
           >
             <Ionicons
               name="send"
@@ -470,6 +511,27 @@ const styles = StyleSheet.create({
   botText: { color: '#111827' },
   userText: { color: '#fff' },
   loadingContainer: { marginTop: 12, alignItems: 'center' },
+  progressContainer: {
+    marginTop: 16,
+    width: '100%',
+  },
+  progressBarBackground: {
+    height: 8,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#6366f1',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
   inputContainer: {
     flexDirection: 'row', alignItems: 'flex-end', padding: 16, backgroundColor: '#fff',
     borderTopWidth: 1, borderTopColor: '#e5e7eb', gap: 8

@@ -19,7 +19,7 @@ bedrock_runtime = boto3.client(
 @api_view(['POST'])
 def generate_feed(request):
     """
-    Generate 5 educational posts with IMAGE-AWARE captions
+    Generate 8 educational posts with IMAGE-AWARE captions
     Flow: 1) Generate image queries → 2) Fetch images → 3) Use vision LLM to generate captions based on actual images
     """
     try:
@@ -31,13 +31,13 @@ def generate_feed(request):
             )
 
         # STEP 1: Generate only image search queries (not captions yet)
-        image_query_prompt = f"""Generate 5 image search queries for "{topic}".
+        image_query_prompt = f"""Generate 8 image search queries for "{topic}".
 Each query should find an educational image about this topic.
 
-Return ONLY a JSON array with 5 strings.
+Return ONLY a JSON array with 8 strings.
 
 Example for "neural networks":
-["neural network diagram", "artificial neuron structure", "deep learning layers", "brain neurons microscope", "AI neural pathways"]
+["neural network diagram", "artificial neuron structure", "deep learning layers", "brain neurons microscope", "AI neural pathways", "convolutional neural network", "recurrent neural network", "neural network training process"]
 
 JSON array:"""
 
@@ -69,7 +69,7 @@ JSON array:"""
 
         # STEP 2: Fetch actual images for each query
         posts = []
-        for query in image_queries[:5]:  # Take first 5
+        for query in image_queries[:8]:  # Take first 8
             source_image_url = None
 
             # Try Google Image Search
