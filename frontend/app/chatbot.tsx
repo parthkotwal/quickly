@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../config';
+import BottomNavBar from '../components/BottomNavBar';
 
 export default function ChatbotScreen() {
   const router = useRouter();
@@ -167,22 +168,13 @@ export default function ChatbotScreen() {
           <Text style={styles.headerTitle}>{previousPrompt ? 'Editing Feed' : 'New Chat'}</Text>
         </TouchableOpacity>
 
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => router.push('/liked')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="heart-outline" size={28} color="#111827" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => router.push('/settings')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="person-circle" size={32} color="#6366f1" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => router.push('/liked')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="heart-outline" size={28} color="#111827" />
+        </TouchableOpacity>
       </View>
 
       {/* Previous Prompt Box */}
@@ -357,6 +349,8 @@ export default function ChatbotScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <BottomNavBar />
     </View>
   );
 }

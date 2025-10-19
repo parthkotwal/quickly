@@ -17,6 +17,7 @@ import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { API_URL } from "../config";
+import BottomNavBar from "../components/BottomNavBar";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const IMAGE_CONTAINER_HEIGHT = 400;
@@ -543,23 +544,12 @@ export default function ChatScreen() {
           <Ionicons name="menu" size={28} color="#111827" />
           <Text style={styles.headerTitle}>Quickly</Text>
         </TouchableOpacity>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconButton} onPress={handleUpload}>
-            <Ionicons name="cloud-upload-outline" size={28} color="#111827" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => router.push("/liked")}
-          >
-            <Ionicons name="heart-outline" size={28} color="#111827" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => router.push("/settings")}
-          >
-            <Ionicons name="person-circle" size={32} color="#6366f1" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => router.push("/liked")}
+        >
+          <Ionicons name="heart-outline" size={28} color="#111827" />
+        </TouchableOpacity>
       </View>
 
       {/* SIDEBAR */}
@@ -904,6 +894,9 @@ export default function ChatScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* BOTTOM NAV BAR */}
+      <BottomNavBar onUpload={handleUpload} />
     </View>
   );
 }

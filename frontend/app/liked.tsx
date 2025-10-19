@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../config';
+import BottomNavBar from '../components/BottomNavBar';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const IMAGE_CONTAINER_HEIGHT = 400;
@@ -136,6 +137,8 @@ export default function LikedPostsScreen() {
           ))
         )}
       </ScrollView>
+
+      <BottomNavBar />
     </View>
   );
 }

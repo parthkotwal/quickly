@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import BottomTabBar from "@/components/BottomTabBar";
+import BottomNavBar from "../components/BottomNavBar";
 import { useRouter } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signOut, updateProfile, updateEmail, updatePassword } from "firebase/auth";
@@ -492,7 +492,7 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      <BottomTabBar />
+      <BottomNavBar />
     </View>
   );
 }
