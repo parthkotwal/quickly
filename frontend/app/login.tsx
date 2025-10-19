@@ -1,3 +1,4 @@
+// app/login.tsx
 import {
   StyleSheet,
   View,
@@ -8,8 +9,7 @@ import {
 } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebaseConfig";
+import { signIn } from "aws-amplify/auth";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -20,22 +20,13 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     try {
       setLoading(true);
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
-      const token = await userCred.user.getIdToken();
-      console.log("Firebase Token:", token);
-
-      // Optional: send token to Django backend
-      // await fetch("https://your-backend.com/api/verify/", {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     Authorization: `Bearer ${token}`,
-      //   },
-      // });
+      const { isSignedIn } = await signIn({ username: email, password });
+      console.log("✅ Cognito sign-in success:", isSignedIn);
 
       router.replace("/chat");
     } catch (error: any) {
-      Alert.alert("Login failed", error.message);
+      console.error("❌ Login error:", error);
+      Alert.alert("Login failed", error.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -96,37 +87,18 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: "center",
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  content: { flex: 1, padding: 24, justifyContent: "center" },
   title: {
     fontSize: 32,
     fontWeight: "bold",
     color: "#111827",
     marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 16,
-    color: "#6b7280",
-    marginBottom: 32,
-  },
-  form: {
-    gap: 20,
-  },
-  inputContainer: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-  },
+  subtitle: { fontSize: 16, color: "#6b7280", marginBottom: 32 },
+  form: { gap: 20 },
+  inputContainer: { gap: 8 },
+  label: { fontSize: 14, fontWeight: "600", color: "#374151" },
   input: {
     backgroundColor: "#f9fafb",
     borderWidth: 1,
@@ -149,23 +121,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
   },
-  loginButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+  loginButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
   signupContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
   },
-  signupText: {
-    fontSize: 14,
-    color: "#6b7280",
-  },
-  signupLink: {
-    fontSize: 14,
-    color: "#6366f1",
-    fontWeight: "600",
-  },
+  signupText: { fontSize: 14, color: "#6b7280" },
+  signupLink: { fontSize: 14, color: "#6366f1", fontWeight: "600" },
 });
