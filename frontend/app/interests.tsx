@@ -12,9 +12,8 @@ import {
   ScrollView,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebaseConfig";
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from "@expo/vector-icons";
+import { signUp } from "aws-amplify/auth";
 
 const HIGH_SCHOOL_TOPICS = [
   "Mathematics",
@@ -113,24 +112,30 @@ export default function InterestsScreen() {
         return;
       }
 
-      // ✅ Create user only after selecting 5 interests
+      // ✅ Create user in Cognito
       try {
         setLoading(true);
-        const userCred = await createUserWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
-        console.log("✅ User signed up:", userCred.user.email);
+        const { userId, isSignUpComplete } = await signUp({
+          username: email,
+          password,
+          options: {
+            userAttributes: {
+              email,
+              name,
+            },
+          },
+        });
 
-        // Optionally store name, grade, major, interests in backend
+        console.log("✅ Cognito signup success:", userId, isSignUpComplete);
+
+        // Optionally store interests in backend later
         // await fetch("https://your-backend.com/api/profile", {...})
 
         setStep(3);
         startAnimation();
       } catch (error: any) {
         console.error("Signup error:", error);
-        Alert.alert("Signup Failed", error.message);
+        Alert.alert("Signup Failed", error.message || "Something went wrong");
       } finally {
         setLoading(false);
       }
@@ -145,7 +150,11 @@ export default function InterestsScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.headerContainer}>
             <View style={styles.iconCircle}>
-              <Ionicons name="person-circle-outline" size={48} color="#6366f1" />
+              <Ionicons
+                name="person-circle-outline"
+                size={48}
+                color="#6366f1"
+              />
             </View>
             <Text style={styles.title}>Let's get to know you</Text>
             <Text style={styles.subtitle}>
@@ -177,7 +186,11 @@ export default function InterestsScreen() {
                 >
                   <View style={styles.optionContent}>
                     <Ionicons
-                      name={educationLevel === level ? "checkmark-circle" : "ellipse-outline"}
+                      name={
+                        educationLevel === level
+                          ? "checkmark-circle"
+                          : "ellipse-outline"
+                      }
                       size={20}
                       color={educationLevel === level ? "#fff" : "#6366f1"}
                     />
@@ -220,7 +233,11 @@ export default function InterestsScreen() {
               </Animated.View>
             )}
 
-            <TouchableOpacity style={styles.continueButton} onPress={nextStep} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.continueButton}
+              onPress={nextStep}
+              activeOpacity={0.8}
+            >
               <Text style={styles.continueText}>Continue</Text>
               <Ionicons name="arrow-forward" size={20} color="#fff" />
             </TouchableOpacity>
@@ -240,9 +257,16 @@ export default function InterestsScreen() {
             </Text>
             <View style={styles.progressContainer}>
               <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${(selected.length / 5) * 100}%` }]} />
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${(selected.length / 5) * 100}%` },
+                  ]}
+                />
               </View>
-              <Text style={styles.progressText}>{selected.length} / 5 selected</Text>
+              <Text style={styles.progressText}>
+                {selected.length} / 5 selected
+              </Text>
             </View>
           </View>
 
@@ -290,7 +314,9 @@ export default function InterestsScreen() {
             <Text style={styles.continueText}>
               {loading ? "Creating Account..." : "Continue"}
             </Text>
-            {!loading && <Ionicons name="arrow-forward" size={20} color="#fff" />}
+            {!loading && (
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -304,7 +330,11 @@ export default function InterestsScreen() {
           <Text style={styles.successText}>
             You're ready to start your personalized learning journey
           </Text>
-          <TouchableOpacity style={styles.continueButton} onPress={nextStep} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.continueButton}
+            onPress={nextStep}
+            activeOpacity={0.8}
+          >
             <Text style={styles.continueText}>Start Learning</Text>
             <Ionicons name="arrow-forward" size={20} color="#fff" />
           </TouchableOpacity>
@@ -319,12 +349,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f9fafb",
     padding: 24,
-    paddingTop: 60
+    paddingTop: 60,
   },
-  headerContainer: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
+  headerContainer: { alignItems: "center", marginBottom: 32 },
   iconCircle: {
     width: 96,
     height: 96,
@@ -375,9 +402,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginTop: 8,
   },
-  optionsContainer: {
-    marginBottom: 12,
-  },
+  optionsContainer: { marginBottom: 12 },
   optionButton: {
     borderWidth: 1.5,
     borderColor: "#e5e7eb",
@@ -386,40 +411,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 12,
     backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
   optionSelected: {
     backgroundColor: "#6366f1",
     borderColor: "#6366f1",
-    shadowColor: "#6366f1",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  optionContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  optionText: {
-    color: "#374151",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  optionTextSelected: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  progressContainer: {
-    width: "100%",
-    alignItems: "center",
-    marginTop: 8,
-  },
+  optionContent: { flexDirection: "row", alignItems: "center", gap: 12 },
+  optionText: { color: "#374151", fontSize: 16, fontWeight: "500" },
+  optionTextSelected: { color: "#fff", fontWeight: "600" },
+  progressContainer: { width: "100%", alignItems: "center", marginTop: 8 },
   progressBar: {
     width: "80%",
     height: 8,
@@ -428,20 +428,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 8,
   },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#6366f1",
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#6366f1",
-  },
-  list: {
-    paddingHorizontal: 8,
-    paddingTop: 8,
-  },
+  progressFill: { height: "100%", backgroundColor: "#6366f1", borderRadius: 4 },
+  progressText: { fontSize: 14, fontWeight: "600", color: "#6366f1" },
+  list: { paddingHorizontal: 8, paddingTop: 8 },
   topicButton: {
     borderWidth: 2,
     borderColor: "#e5e7eb",
@@ -452,21 +441,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     minWidth: 140,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-    position: "relative",
   },
   topicSelected: {
     backgroundColor: "#6366f1",
     borderColor: "#6366f1",
-    shadowColor: "#6366f1",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
   checkmarkBadge: {
     position: "absolute",
@@ -481,15 +459,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#fff",
   },
-  topicText: {
-    color: "#374151",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  topicTextSelected: {
-    color: "#fff",
-    fontWeight: "700",
-  },
+  topicText: { color: "#374151", fontSize: 15, fontWeight: "600" },
+  topicTextSelected: { color: "#fff", fontWeight: "700" },
   continueButton: {
     backgroundColor: "#6366f1",
     borderRadius: 12,
@@ -500,31 +471,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 8,
-    shadowColor: "#6366f1",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  continueButtonDisabled: {
-    backgroundColor: "#9ca3af",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-  },
-  continueText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "bold",
-  },
+  continueButtonDisabled: { backgroundColor: "#9ca3af" },
+  continueText: { color: "#fff", fontSize: 17, fontWeight: "bold" },
   successContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 40,
   },
-  successIconContainer: {
-    marginBottom: 24,
-  },
+  successIconContainer: { marginBottom: 24 },
   successTitle: {
     fontSize: 36,
     fontWeight: "bold",
