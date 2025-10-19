@@ -242,14 +242,14 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     width,
-    height: height * 0.75,
+    height: height * 0.6,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
   },
   card: {
     width: width * 0.9,
-    height: height * 0.65,
+    height: height * 0.55,
     borderRadius: 24,
     backgroundColor: "#ffffff",
     padding: 32,

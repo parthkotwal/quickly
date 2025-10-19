@@ -83,7 +83,6 @@ export default function ChatScreen() {
       const userId = await AsyncStorage.getItem("userId");
       if (!userId) return;
 
-      // Dummy endpoint for now - replace with actual backend call
       const response = await fetch(
         `${API_URL}/getSavedFlashcards?userId=${userId}`
       );
@@ -91,23 +90,12 @@ export default function ChatScreen() {
         const data = await response.json();
         setSavedFlashcards(data.flashcards || []);
       } else {
-        // Dummy data for development
-        setSavedFlashcards([
-          { id: "1", title: "Math Formulas", createdAt: "2024-10-19" },
-          { id: "2", title: "Biology Notes", createdAt: "2024-10-18" },
-          { id: "3", title: "History Facts", createdAt: "2024-10-17" },
-          { id: "4", title: "Chemistry Equations", createdAt: "2024-10-16" },
-          { id: "5", title: "Physics Laws", createdAt: "2024-10-15" },
-        ]);
+        console.error("Failed to load flashcards:", response.statusText);
+        setSavedFlashcards([]);
       }
     } catch (error) {
       console.error("Error loading saved flashcards:", error);
-      // Set dummy data on error
-      setSavedFlashcards([
-        { id: "1", title: "Math Formulas", createdAt: "2024-10-19" },
-        { id: "2", title: "Biology Notes", createdAt: "2024-10-18" },
-        { id: "3", title: "History Facts", createdAt: "2024-10-17" },
-      ]);
+      setSavedFlashcards([]);
     }
   };
 
@@ -233,16 +221,16 @@ export default function ChatScreen() {
         { method: "DELETE" }
       );
 
-      if (response.ok || true) {
-        // Always succeed for now with dummy data
+      if (response.ok) {
         setSavedFlashcards((prev) =>
           prev.filter((fc) => fc.id !== flashcardId)
         );
+      } else {
+        Alert.alert("Error", "Failed to delete flashcard set");
       }
     } catch (error) {
       console.error("Error deleting flashcard:", error);
-      // Still remove from local state for demo purposes
-      setSavedFlashcards((prev) => prev.filter((fc) => fc.id !== flashcardId));
+      Alert.alert("Error", "Something went wrong while deleting");
     }
   };
 
@@ -251,7 +239,6 @@ export default function ChatScreen() {
       const userId = await AsyncStorage.getItem("userId");
       if (!userId) return;
 
-      // Dummy endpoint for now - replace with actual backend call
       const response = await fetch(
         `${API_URL}/getFlashcard?userId=${userId}&flashcardId=${flashcardId}`
       );
@@ -265,25 +252,7 @@ export default function ChatScreen() {
           },
         });
       } else {
-        // Dummy flashcard data for development
-        const dummyFlashcards = [
-          {
-            topic: "Sample Topic 1",
-            explanation:
-              "This is a sample explanation for the first flashcard.",
-          },
-          {
-            topic: "Sample Topic 2",
-            explanation:
-              "This is a sample explanation for the second flashcard.",
-          },
-        ];
-        router.push({
-          pathname: "/flashcards",
-          params: {
-            data: encodeURIComponent(JSON.stringify(dummyFlashcards)),
-          },
-        });
+        Alert.alert("Error", "Failed to load flashcard set");
       }
     } catch (error) {
       console.error("Error opening flashcard:", error);

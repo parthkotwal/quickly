@@ -16,5 +16,8 @@ urlpatterns = [
     path('uploadImage', views.upload_image, name='upload_image'),
     path('generateFlashcards', views.generate_flashcards, name='generate_flashcards'),
     path('generateQuiz', views.generate_quiz, name='generate_quiz'),
+    path('getSavedFlashcards', views.get_saved_flashcards, name='get_saved_flashcards'),
+    path('getFlashcard', views.get_flashcard_set, name='get_flashcard_set'),
+    path('deleteFlashcard', views.delete_flashcard_set_view, name='delete_flashcard_set'),
 
 ]
