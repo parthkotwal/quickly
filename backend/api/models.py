@@ -1,35 +1,37 @@
 from django.db import models
+import uuid
 
-# FeedSession stores session tokens and context
-class FeedSession(models.Model):
-    token = models.CharField(max_length=64, unique=True)
-    context = models.JSONField(default=dict)
+
+class Feed(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    topic = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
+    dynamodb_id = models.CharField(max_length=255, unique=True)  # Reference to DynamoDB record
+    
+    class Meta:
+        ordering = ['-created_at']
 
-# CachedFeed stores cached results for quick reloads
-class CachedFeed(models.Model):
-    session = models.ForeignKey(FeedSession, on_delete=models.CASCADE)
-    endpoint = models.CharField(max_length=32)
-    data = models.JSONField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-# Post stores generated posts with optional image/audio URLs
 class Post(models.Model):
-    session = models.ForeignKey(FeedSession, on_delete=models.CASCADE)
-    content = models.TextField()
-    image_url = models.URLField(blank=True, null=True)
-    audio_url = models.URLField(blank=True, null=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    feed = models.ForeignKey(Feed, on_delete=models.CASCADE, related_name='posts')
+    caption = models.TextField()
+    image_url = models.URLField()  # S3 URL for the image
+    image_prompt = models.TextField()  # Prompt used to search/generate image
     created_at = models.DateTimeField(auto_now_add=True)
+    order = models.IntegerField()  # Position in feed
+    
+    class Meta:
+        ordering = ['order']
 
-# Flashcard stores flashcard sets for a topic
 class Flashcard(models.Model):
-    session = models.ForeignKey(FeedSession, on_delete=models.CASCADE)
-    topic = models.CharField(max_length=128)
-    cards = models.JSONField()  # {"front": "...", "back": "..."}
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    post = models.OneToOneField(Post, on_delete=models.CASCADE, related_name='flashcard')
+    question = models.TextField()
+    answer = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
-# For admin/debugging
-class QueryLog(models.Model):
-    query = models.TextField()
-    response = models.JSONField()
+class UserProfile(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    cognito_id = models.CharField(max_length=255, unique=True)  # AWS Cognito user ID
+    dynamodb_id = models.CharField(max_length=255, unique=True)  # Reference to DynamoDB record
     created_at = models.DateTimeField(auto_now_add=True)
