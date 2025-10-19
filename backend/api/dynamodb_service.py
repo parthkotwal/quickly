@@ -16,6 +16,7 @@ dynamodb = boto3.resource(
 POSTS_TABLE = os.getenv('DYNAMODB_POSTS_TABLE', 'quickly-posts')
 LIKES_TABLE = os.getenv('DYNAMODB_LIKES_TABLE', 'quickly-likes')
 USERS_TABLE = os.getenv('DYNAMODB_USERS_TABLE', 'quickly-users')
+FLASHCARDS_TABLE = os.getenv('DYNAMODB_FLASHCARDS_TABLE', 'quickly-flashcards')
 
 def get_posts_table():
     """Get or create posts table"""
@@ -314,3 +315,133 @@ def update_feed_privacy(user_id, topic, is_private):
         'topic': topic,
         'isPrivate': is_private
     }
+
+
+def get_flashcards_table():
+    """Get or create flashcards table"""
+    try:
+        table = dynamodb.Table(FLASHCARDS_TABLE)
+        table.load()
+        return table
+    except:
+        # Table doesn't exist, create it
+        table = dynamodb.create_table(
+            TableName=FLASHCARDS_TABLE,
+            KeySchema=[
+                {'AttributeName': 'userId', 'KeyType': 'HASH'},  # Partition key
+                {'AttributeName': 'flashcardId', 'KeyType': 'RANGE'}  # Sort key
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'userId', 'AttributeType': 'S'},
+                {'AttributeName': 'flashcardId', 'AttributeType': 'S'},
+            ],
+            ProvisionedThroughput={
+                'ReadCapacityUnits': 5,
+                'WriteCapacityUnits': 5
+            }
+        )
+        table.wait_until_exists()
+        return table
+
+
+def save_flashcard_set(user_id, title, flashcards_data, image_url=None):
+    """Save a new flashcard set to DynamoDB"""
+    try:
+        table = get_flashcards_table()
+        flashcard_id = f"flashcard_{datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')}"
+        
+        item = {
+            'userId': user_id,
+            'flashcardId': flashcard_id,
+            'title': title,
+            'flashcards': flashcards_data,
+            'imageUrl': image_url,
+            'createdAt': datetime.utcnow().isoformat(),
+            'updatedAt': datetime.utcnow().isoformat()
+        }
+        
+        table.put_item(Item=item)
+        return item
+        
+    except Exception as e:
+        print(f"Error saving flashcard set: {str(e)}")
+        raise e
+
+
+def get_user_flashcards(user_id):
+    """Get all flashcard sets for a user"""
+    try:
+        table = get_flashcards_table()
+        
+        response = table.query(
+            KeyConditionExpression='userId = :userId',
+            ExpressionAttributeValues={
+                ':userId': user_id
+            },
+            ScanIndexForward=False  # Most recent first
+        )
+        
+        flashcards = []
+        for item in response.get('Items', []):
+            flashcard = {
+                'id': item['flashcardId'],
+                'title': item['title'],
+                'createdAt': item['createdAt'],
+                'imageUrl': item.get('imageUrl'),
+                'cardCount': len(item.get('flashcards', []))
+            }
+            flashcards.append(flashcard)
+        
+        return flashcards
+        
+    except Exception as e:
+        print(f"Error getting user flashcards: {str(e)}")
+        raise e
+
+
+def get_flashcard_by_id(user_id, flashcard_id):
+    """Get specific flashcard set by ID"""
+    try:
+        table = get_flashcards_table()
+        
+        response = table.get_item(
+            Key={
+                'userId': user_id,
+                'flashcardId': flashcard_id
+            }
+        )
+        
+        if 'Item' not in response:
+            return None
+            
+        item = response['Item']
+        return {
+            'id': item['flashcardId'],
+            'title': item['title'],
+            'flashcards': item['flashcards'],
+            'createdAt': item['createdAt'],
+            'imageUrl': item.get('imageUrl')
+        }
+        
+    except Exception as e:
+        print(f"Error getting flashcard by ID: {str(e)}")
+        raise e
+
+
+def delete_flashcard_set(user_id, flashcard_id):
+    """Delete a flashcard set"""
+    try:
+        table = get_flashcards_table()
+        
+        table.delete_item(
+            Key={
+                'userId': user_id,
+                'flashcardId': flashcard_id
+            }
+        )
+        
+        return {'deleted': True, 'flashcardId': flashcard_id}
+        
+    except Exception as e:
+        print(f"Error deleting flashcard set: {str(e)}")
+        raise e

@@ -5,7 +5,7 @@ import os
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .dynamodb_service import save_posts, get_user_posts, get_user_topics, like_post, unlike_post, get_user_likes, is_post_liked, get_posts_by_topic, delete_feed, get_public_feed, update_feed_privacy
+from .dynamodb_service import save_posts, get_user_posts, get_user_topics, like_post, unlike_post, get_user_likes, is_post_liked, get_posts_by_topic, delete_feed, get_public_feed, update_feed_privacy, get_user_flashcards, get_flashcard_by_id, delete_flashcard_set
 from .s3_service import upload_image_from_url
 from django.views.decorators.csrf import csrf_exempt
 from .s3_service import upload_image_file
@@ -480,3 +480,99 @@ def upload_image(request):
         print(f"❌ Upload error: {e}")
         return Response({'error': str(e)},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def get_saved_flashcards(request):
+    """
+    Get all saved flashcard sets for a user
+    """
+    try:
+        user_id = request.query_params.get('userId')
+        
+        if not user_id:
+            return Response(
+                {'error': 'userId is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        flashcards = get_user_flashcards(user_id)
+        
+        return Response({
+            'flashcards': flashcards
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"❌ Error in get_saved_flashcards: {str(e)}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def get_flashcard_set(request):
+    """
+    Get specific flashcard set by ID
+    """
+    try:
+        user_id = request.query_params.get('userId')
+        flashcard_id = request.query_params.get('flashcardId')
+        
+        if not user_id or not flashcard_id:
+            return Response(
+                {'error': 'userId and flashcardId are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        flashcard_set = get_flashcard_by_id(user_id, flashcard_id)
+        
+        if not flashcard_set:
+            return Response(
+                {'error': 'Flashcard set not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        return Response({
+            'flashcards': flashcard_set['flashcards'],
+            'title': flashcard_set['title'],
+            'createdAt': flashcard_set['createdAt'],
+            'imageUrl': flashcard_set.get('imageUrl')
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"❌ Error in get_flashcard_set: {str(e)}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['DELETE'])
+def delete_flashcard_set_view(request):
+    """
+    Delete a specific flashcard set
+    """
+    try:
+        user_id = request.query_params.get('userId')
+        flashcard_id = request.query_params.get('flashcardId')
+        
+        if not user_id or not flashcard_id:
+            return Response(
+                {'error': 'userId and flashcardId are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        result = delete_flashcard_set(user_id, flashcard_id)
+        
+        return Response({
+            'message': 'Flashcard set deleted successfully',
+            'deleted': True
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"❌ Error in delete_flashcard_set: {str(e)}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
