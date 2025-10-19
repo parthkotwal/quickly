@@ -7,6 +7,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from .dynamodb_service import save_posts, get_user_posts, get_user_topics, like_post, unlike_post, get_user_likes, is_post_liked, get_posts_by_topic, delete_feed, get_public_feed, update_feed_privacy
 from .s3_service import upload_image_from_url
+from django.views.decorators.csrf import csrf_exempt
+from .s3_service import upload_image_file
+from .generate_flashcards import generate_flashcards
+from .generate_quiz import generate_quiz
+
+
 
 # Initialize Bedrock client with credentials from environment
 bedrock_runtime = boto3.client(
@@ -447,3 +453,30 @@ def update_feed_privacy_view(request):
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+@csrf_exempt
+@api_view(['POST'])
+def upload_image(request):
+    """
+    Upload an image from React Native (FormData) and save it to S3.
+    """
+    try:
+        user_id = request.POST.get('userId')
+        image_file = request.FILES.get('file')
+
+        if not user_id or not image_file:
+            return Response({'error': 'userId and image file are required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        s3_url = upload_image_file(image_file, user_id)
+
+        if not s3_url:
+            return Response({'error': 'Failed to upload to S3'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'message': '✅ Upload successful', 'url': s3_url},
+                        status=status.HTTP_200_OK)
+
+    except Exception as e:
+        print(f"❌ Upload error: {e}")
+        return Response({'error': str(e)},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
