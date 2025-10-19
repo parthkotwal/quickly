@@ -6,6 +6,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// CUSTOMIZATION: Image container height - the white box that contains the image
+const IMAGE_CONTAINER_HEIGHT = 400; // Change this for bigger/smaller posts
+
+// Random names for "liked by" section
+const RANDOM_NAMES = [
+  'Sarah Chen', 'Michael Rodriguez', 'Emma Watson', 'James Kim',
+  'Olivia Martinez', 'Noah Johnson', 'Ava Williams', 'Liam Brown',
+  'Sophia Davis', 'Lucas Miller', 'Isabella Garcia', 'Mason Wilson'
+];
+
 interface FeedPost {
   imageUrl: string;
   text: string;
@@ -75,6 +85,10 @@ export default function ChatScreen() {
     );
   };
 
+  const getRandomName = (index: number): string => {
+    return RANDOM_NAMES[index % RANDOM_NAMES.length];
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -126,13 +140,10 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {/* Instagram-style Feed */}
+      {/* Classic Instagram Feed */}
       <ScrollView
         style={styles.feedContainer}
         showsVerticalScrollIndicator={false}
-        pagingEnabled
-        snapToInterval={SCREEN_WIDTH}
-        decelerationRate="fast"
       >
         {feedPosts.length === 0 ? (
           <View style={styles.emptyState}>
@@ -141,32 +152,23 @@ export default function ChatScreen() {
             <Text style={styles.emptyText}>Start a new chat to generate your personalized learning feed!</Text>
           </View>
         ) : (
-          feedPosts.map((post, index) => (
-            <View key={index} style={styles.postContainer}>
-              {/* Post Image */}
-              <Image
-                source={{ uri: post.imageUrl }}
-                style={styles.postImage}
-                resizeMode="cover"
-              />
+          feedPosts.map((post, index) => {
+            const likedByName = getRandomName(index);
 
-              {/* Gradient Overlay */}
-              <View style={styles.gradientOverlay} />
-
-              {/* Post Content */}
-              <View style={styles.postContent}>
-                {/* Music Info */}
-                <View style={styles.musicInfo}>
-                  <Ionicons name="musical-notes" size={16} color="#fff" />
-                  <Text style={styles.musicText}>{post.musicTitle || 'Background Music'}</Text>
+            return (
+              <View key={index} style={styles.postContainer}>
+                {/* Image Container - Full width white background */}
+                <View style={styles.imageContainer}>
+                  <Image
+                    source={{ uri: post.imageUrl }}
+                    style={styles.postImage}
+                    resizeMode="contain"
+                  />
                 </View>
 
-                {/* Post Text */}
-                <Text style={styles.postText}>{post.text}</Text>
-
-                {/* Post Actions */}
+                {/* Actions Row - Instagram Style */}
                 <View style={styles.postActions}>
-                  <View style={styles.actionGroup}>
+                  <View style={styles.actionsLeft}>
                     <TouchableOpacity
                       style={styles.actionButton}
                       onPress={() => toggleLike(index)}
@@ -174,29 +176,42 @@ export default function ChatScreen() {
                       <Ionicons
                         name={post.isLiked ? "heart" : "heart-outline"}
                         size={28}
-                        color={post.isLiked ? "#ef4444" : "#fff"}
+                        color={post.isLiked ? "#ef4444" : "#111827"}
                       />
                     </TouchableOpacity>
-                    <Text style={styles.actionCount}>{formatNumber(post.likes)}</Text>
+
+                    <TouchableOpacity style={styles.actionButton}>
+                      <Ionicons name="chatbubble-outline" size={28} color="#111827" />
+                    </TouchableOpacity>
                   </View>
 
-                  <View style={styles.actionGroup}>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Ionicons name="chatbubble-outline" size={28} color="#fff" />
-                    </TouchableOpacity>
-                    <Text style={styles.actionCount}>{formatNumber(post.comments)}</Text>
-                  </View>
-
-                  <View style={styles.actionGroup}>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Ionicons name="share-outline" size={28} color="#fff" />
-                    </TouchableOpacity>
-                    <Text style={styles.actionCount}>{formatNumber(post.shares)}</Text>
-                  </View>
+                  <TouchableOpacity style={styles.actionButton}>
+                    <Ionicons name="paper-plane-outline" size={28} color="#111827" />
+                  </TouchableOpacity>
                 </View>
+
+                {/* Liked By Section */}
+                <View style={styles.likedBySection}>
+                  <Text style={styles.likedByText}>
+                    Liked by <Text style={styles.likedByName}>{likedByName}</Text> and{' '}
+                    <Text style={styles.likedByName}>{formatNumber(post.likes - 1)} others</Text>
+                  </Text>
+                </View>
+
+                {/* Caption */}
+                <View style={styles.captionContainer}>
+                  <Text style={styles.captionText}>{post.text}</Text>
+                </View>
+
+                {/* View Comments */}
+                <TouchableOpacity style={styles.viewCommentsButton}>
+                  <Text style={styles.viewCommentsText}>
+                    View all {formatNumber(post.comments)} comments
+                  </Text>
+                </TouchableOpacity>
               </View>
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </View>
@@ -261,6 +276,7 @@ const styles = StyleSheet.create({
   },
   feedContainer: {
     flex: 1,
+    backgroundColor: '#fff', // Instagram white background
   },
   emptyState: {
     flex: 1,
@@ -281,62 +297,73 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
   },
+  // CUSTOMIZATION: Post container - each Instagram post
   postContainer: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH * 1.5,
-    position: 'relative',
+    marginBottom: 24, // Space between posts
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#efefef',
+    paddingBottom: 16,
   },
+  // CUSTOMIZATION: Image container - white box that holds image
+  imageContainer: {
+    width: SCREEN_WIDTH,
+    height: IMAGE_CONTAINER_HEIGHT, // Adjust IMAGE_CONTAINER_HEIGHT at top of file
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // CUSTOMIZATION: Image - contained, not stretched
   postImage: {
     width: '100%',
     height: '100%',
   },
-  gradientOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '50%',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  postContent: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-  },
-  musicInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  musicText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  postText: {
-    color: '#fff',
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 20,
-    fontWeight: '500',
-  },
+  // CUSTOMIZATION: Actions row (Instagram style)
   postActions: {
     flexDirection: 'row',
-    gap: 24,
-  },
-  actionGroup: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    justifyContent: 'space-between', // Like/comment left, share right
     alignItems: 'center',
-    gap: 4,
   },
+  actionsLeft: {
+    flexDirection: 'row',
+    gap: 16, // Space between like and comment
+  },
+  // CUSTOMIZATION: Individual action button
   actionButton: {
     padding: 4,
   },
-  actionCount: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+  // CUSTOMIZATION: "Liked by" section
+  likedBySection: {
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+  },
+  likedByText: {
+    fontSize: 14,
+    color: '#000',
+  },
+  likedByName: {
+    fontWeight: '600', // Bold names
+    color: '#000',
+  },
+  // CUSTOMIZATION: Caption container
+  captionContainer: {
+    paddingHorizontal: 14,
+    paddingBottom: 4,
+  },
+  captionText: {
+    fontSize: 14,
+    color: '#000',
+    lineHeight: 20,
+  },
+  // CUSTOMIZATION: View comments button
+  viewCommentsButton: {
+    paddingHorizontal: 14,
+    paddingTop: 4,
+  },
+  viewCommentsText: {
+    fontSize: 14,
+    color: '#737373',
   },
 });
