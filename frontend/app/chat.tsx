@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../config';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -31,6 +32,7 @@ export default function ChatScreen() {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
+  const [currentTopic, setCurrentTopic] = useState<string | null>(null);
 
   // Load feed data when screen comes into focus
   useFocusEffect(
@@ -39,25 +41,55 @@ export default function ChatScreen() {
     }, [])
   );
 
-  const loadFeedData = async () => {
+  const loadFeedData = async (filterTopic?: string) => {
     try {
-      const storedPosts = await AsyncStorage.getItem('feedPosts');
-      const storedTopics = await AsyncStorage.getItem('topics');
+      const userId = await AsyncStorage.getItem('userId');
 
-      if (storedPosts) {
-        const posts = JSON.parse(storedPosts);
-        // Add random engagement metrics to each post
-        const postsWithMetrics = posts.map((post: any) => ({
-          ...post,
-          likes: Math.floor(Math.random() * 10000) + 100, // 100-10,100 likes
-          comments: Math.floor(Math.random() * 500) + 10, // 10-510 comments
-          shares: Math.floor(Math.random() * 200) + 5, // 5-205 shares
-          isLiked: false, // Track if user liked
-        }));
-        setFeedPosts(postsWithMetrics);
+      // Load topics from DynamoDB (user's own topics only)
+      if (userId) {
+        const topicsResponse = await fetch(`${API_URL}/getTopics?userId=${userId}`);
+        const topicsData = await topicsResponse.json();
+        if (topicsResponse.ok && topicsData.topics) {
+          setTopics(topicsData.topics);
+        }
       }
-      if (storedTopics) {
-        setTopics(JSON.parse(storedTopics));
+
+      // Load posts - either filtered by topic or public feed
+      if (userId) {
+        let response;
+        let data;
+
+        if (filterTopic) {
+          // Load user's specific topic
+          response = await fetch(`${API_URL}/getFeedByTopic?userId=${userId}&topic=${encodeURIComponent(filterTopic)}`);
+          data = await response.json();
+          setCurrentTopic(filterTopic);
+        } else {
+          // Load PUBLIC feed from all users (default view)
+          response = await fetch(`${API_URL}/getPublicFeed?limit=50`);
+          data = await response.json();
+          setCurrentTopic(null);
+        }
+
+        if (response.ok && data.posts) {
+          let posts = data.posts;
+
+          // Check which posts are liked
+          const likedResponse = await fetch(`${API_URL}/getLikedPosts?userId=${userId}`);
+          const likedData = await likedResponse.json();
+          const likedPostIds = new Set(likedData.posts?.map((p: any) => p.postId) || []);
+
+          // Add metrics and liked status
+          const postsWithMetrics = posts.map((post: any) => ({
+            ...post,
+            likes: post.likes || Math.floor(Math.random() * 10000) + 100,
+            comments: post.comments || Math.floor(Math.random() * 500) + 10,
+            shares: post.shares || Math.floor(Math.random() * 200) + 5,
+            isLiked: likedPostIds.has(post.postId),
+          }));
+
+          setFeedPosts(postsWithMetrics);
+        }
       }
     } catch (error) {
       console.error('Error loading feed data:', error);
@@ -71,18 +103,82 @@ export default function ChatScreen() {
     return num.toString();
   };
 
-  const toggleLike = (index: number): void => {
+  const deleteFeed = async (topic: string) => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+
+      if (!userId) {
+        console.error('No userId found');
+        return;
+      }
+
+      // Delete feed from backend
+      const response = await fetch(`${API_URL}/deleteFeed?userId=${userId}&topic=${encodeURIComponent(topic)}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        console.log(`✅ Deleted feed: ${topic}`);
+
+        // If currently viewing the deleted topic, switch to all topics
+        if (currentTopic === topic) {
+          setCurrentTopic(null);
+        }
+
+        // Reload data
+        loadFeedData(currentTopic === topic ? undefined : currentTopic);
+      } else {
+        console.error('Failed to delete feed');
+      }
+    } catch (error) {
+      console.error('Error deleting feed:', error);
+    }
+  };
+
+  const toggleLike = async (index: number): Promise<void> => {
+    const post = feedPosts[index];
+    const newLikedState = !post.isLiked;
+
+    // Optimistically update UI
     setFeedPosts(prevPosts =>
-      prevPosts.map((post, i) =>
+      prevPosts.map((p, i) =>
         i === index
           ? {
-              ...post,
-              isLiked: !post.isLiked,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1
+              ...p,
+              isLiked: newLikedState,
+              likes: newLikedState ? p.likes + 1 : p.likes - 1
             }
-          : post
+          : p
       )
     );
+
+    // Save to backend
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+
+      await fetch(`${API_URL}/toggleLike`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          postId: (post as any).postId || `${index}`, // Use postId if available
+          postData: post,
+          action: newLikedState ? 'like' : 'unlike',
+        }),
+      });
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      // Revert on error
+      setFeedPosts(prevPosts =>
+        prevPosts.map((p, i) =>
+          i === index
+            ? { ...p, isLiked: !newLikedState, likes: newLikedState ? p.likes - 1 : p.likes + 1 }
+            : p
+        )
+      );
+    }
   };
 
   const getRandomName = (index: number): string => {
@@ -102,10 +198,16 @@ export default function ChatScreen() {
         </TouchableOpacity>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push('/liked')}
+          >
             <Ionicons name="heart-outline" size={28} color="#111827" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push('/settings')}
+          >
             <Ionicons name="person-circle" size={32} color="#6366f1" />
           </TouchableOpacity>
         </View>
@@ -124,18 +226,44 @@ export default function ChatScreen() {
             <Ionicons name="add-circle-outline" size={20} color="#111827" />
             <Text style={styles.dropdownText}>New Chat</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.dropdownItem, !currentTopic && styles.dropdownItemActive]}
+            onPress={() => {
+              setDropdownVisible(false);
+              loadFeedData(); // Show public feed from everyone
+            }}
+          >
+            <Ionicons name="globe-outline" size={20} color={!currentTopic ? "#6366f1" : "#111827"} />
+            <Text style={[styles.dropdownText, !currentTopic && styles.dropdownTextActive]}>
+              Public Feed
+            </Text>
+          </TouchableOpacity>
+
           {topics.map((topic, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.dropdownItem}
-              onPress={() => {
-                setDropdownVisible(false);
-                // Load this topic's feed
-              }}
-            >
-              <Ionicons name="book-outline" size={20} color="#111827" />
-              <Text style={styles.dropdownText}>{topic}</Text>
-            </TouchableOpacity>
+            <View key={index} style={styles.dropdownItemRow}>
+              <TouchableOpacity
+                style={[styles.dropdownItem, currentTopic === topic && styles.dropdownItemActive, styles.dropdownItemWithDelete]}
+                onPress={() => {
+                  setDropdownVisible(false);
+                  loadFeedData(topic); // Filter by this topic
+                }}
+              >
+                <Ionicons name="book-outline" size={20} color={currentTopic === topic ? "#6366f1" : "#111827"} />
+                <Text style={[styles.dropdownText, currentTopic === topic && styles.dropdownTextActive]}>
+                  {topic}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  deleteFeed(topic);
+                }}
+              >
+                <Ionicons name="trash-outline" size={18} color="#ef4444" />
+              </TouchableOpacity>
+            </View>
           ))}
         </View>
       )}
@@ -198,9 +326,12 @@ export default function ChatScreen() {
                   </Text>
                 </View>
 
-                {/* Caption */}
+                {/* Caption with Username */}
                 <View style={styles.captionContainer}>
-                  <Text style={styles.captionText}>{post.text}</Text>
+                  <Text style={styles.captionText}>
+                    <Text style={styles.usernameText}>u/{(post as any).username || 'anonymous'}</Text>
+                    {' '}{post.text}
+                  </Text>
                 </View>
 
                 {/* View Comments */}
@@ -262,6 +393,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  dropdownItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -269,10 +404,26 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingHorizontal: 20,
   },
+  dropdownItemWithDelete: {
+    flex: 1,
+    paddingRight: 0,
+  },
+  dropdownItemActive: {
+    backgroundColor: '#eef2ff',
+  },
+  deleteButton: {
+    padding: 16,
+    paddingLeft: 8,
+    paddingRight: 20,
+  },
   dropdownText: {
     fontSize: 16,
     color: '#111827',
     fontWeight: '500',
+  },
+  dropdownTextActive: {
+    color: '#6366f1',
+    fontWeight: '600',
   },
   feedContainer: {
     flex: 1,
@@ -356,6 +507,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#000',
     lineHeight: 20,
+  },
+  usernameText: {
+    fontWeight: 'bold',
+    color: '#000',
   },
   // CUSTOMIZATION: View comments button
   viewCommentsButton: {

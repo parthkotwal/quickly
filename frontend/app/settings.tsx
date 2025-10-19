@@ -9,14 +9,16 @@ import { Ionicons } from "@expo/vector-icons";
 import BottomTabBar from "@/components/BottomTabBar";
 import { useRouter } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { signOut } from "firebase/auth";
+import { auth } from "../firebaseConfig";
 
 export default function SettingsScreen() {
   const router = useRouter();
 
   const handleLogout = async () => {
     try {
-      // Clear Cognito session from AsyncStorage
-      await AsyncStorage.removeItem('userToken');
+      // Sign out from Firebase
+      await signOut(auth);
       await AsyncStorage.removeItem('userId');
       console.log("User signed out");
       router.replace("/login");

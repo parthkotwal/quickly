@@ -3,5 +3,14 @@ from . import views
 
 urlpatterns = [
     path('generateFeed', views.generate_feed, name='generate_feed'),
+    path('saveFeedPosts', views.save_feed_posts, name='save_feed_posts'),
+    path('getFeed', views.get_feed, name='get_feed'),
+    path('getPublicFeed', views.get_public_feed_view, name='get_public_feed'),
+    path('getFeedByTopic', views.get_feed_by_topic, name='get_feed_by_topic'),
+    path('deleteFeed', views.delete_feed_by_topic, name='delete_feed'),
+    path('updateFeedPrivacy', views.update_feed_privacy_view, name='update_feed_privacy'),
+    path('toggleLike', views.toggle_like, name='toggle_like'),
+    path('getLikedPosts', views.get_liked_posts, name='get_liked_posts'),
+    path('getTopics', views.get_topics, name='get_topics'),
     path('health', views.health_check, name='health_check'),
 ]

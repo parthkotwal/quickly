@@ -38,16 +38,30 @@ export default function ChatbotScreen() {
         const data = await response.json();
 
         if (response.ok) {
-          // Store feed data and topic
-          await AsyncStorage.setItem('feedPosts', JSON.stringify(data.posts));
-          await AsyncStorage.setItem('currentTopic', topic);
+          // Save posts to DynamoDB
+          const userId = await AsyncStorage.getItem('userId');
+          const username = await AsyncStorage.getItem('username') || userId?.slice(0, 8);
 
-          // Get existing topics and add this one
-          const existingTopics = await AsyncStorage.getItem('topics');
-          const topics = existingTopics ? JSON.parse(existingTopics) : [];
-          if (!topics.includes(topic)) {
-            topics.unshift(topic); // Add to beginning
-            await AsyncStorage.setItem('topics', JSON.stringify(topics));
+          try {
+            const saveResponse = await fetch(`${API_URL}/saveFeedPosts`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId,
+                topic,
+                posts: data.posts,
+                username,
+                isPrivate: false, // Default to public (users can change later)
+              }),
+            });
+
+            if (saveResponse.ok) {
+              console.log('Posts saved to DynamoDB (public feed)');
+            }
+          } catch (error) {
+            console.error('Error saving to DynamoDB:', error);
           }
 
           // Remove loading message and add success message
@@ -85,10 +99,16 @@ export default function ChatbotScreen() {
         </TouchableOpacity>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push('/liked')}
+          >
             <Ionicons name="heart-outline" size={28} color="#111827" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push('/settings')}
+          >
             <Ionicons name="person-circle" size={32} color="#6366f1" />
           </TouchableOpacity>
         </View>

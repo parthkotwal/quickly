@@ -81,7 +81,7 @@ npx expo start
 
 ## Usage Flow
 
-1. **Login**: Sign in with your email/password (Firebase auth)
+1. **Login**: Sign in with your email/password (AWS Cognito auth)
 2. **Home Page**: View your Instagram-style educational feed (empty initially)
 3. **New Chat**: Click "Quickly" dropdown → "New Chat"
 4. **Enter Topic**: Type something like "teach me about neural networks"

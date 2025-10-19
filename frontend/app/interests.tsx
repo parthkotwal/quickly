@@ -13,7 +13,9 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { signUp } from "aws-amplify/auth";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { auth } from "../firebaseConfig";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const HIGH_SCHOOL_TOPICS = [
   "Mathematics",
@@ -105,37 +107,44 @@ export default function InterestsScreen() {
       setStep(2);
     } else if (step === 2) {
       if (selected.length < 5) {
-        Alert.alert(
-          "Select 5 topics",
-          "Please select exactly 5 interests to continue."
-        );
+        Alert.alert("Select 5 topics", "Please select exactly 5 interests to continue.");
         return;
       }
 
-      // ✅ Create user in Cognito
       try {
         setLoading(true);
-        const { userId, isSignUpComplete } = await signUp({
-          username: email,
-          password,
-          options: {
-            userAttributes: {
-              email,
-              name,
-            },
-          },
+
+        // Create user with Firebase
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        console.log("✅ Firebase signup success:", user.uid);
+
+        // Update user profile with name
+        await updateProfile(user, {
+          displayName: name,
         });
 
-        console.log("✅ Cognito signup success:", userId, isSignUpComplete);
-
-        // Optionally store interests in backend later
-        // await fetch("https://your-backend.com/api/profile", {...})
+        // Store user ID in AsyncStorage
+        await AsyncStorage.setItem("userId", user.uid);
+        console.log("✅ Stored userId:", user.uid);
 
         setStep(3);
         startAnimation();
       } catch (error: any) {
         console.error("Signup error:", error);
-        Alert.alert("Signup Failed", error.message || "Something went wrong");
+
+        let errorMessage = error.message || "Something went wrong";
+
+        if (error.code === "auth/email-already-in-use") {
+          errorMessage = "An account with this email already exists";
+        } else if (error.code === "auth/invalid-email") {
+          errorMessage = "Invalid email address";
+        } else if (error.code === "auth/weak-password") {
+          errorMessage = "Password should be at least 6 characters";
+        }
+
+        Alert.alert("Signup Failed", errorMessage);
       } finally {
         setLoading(false);
       }
@@ -146,15 +155,12 @@ export default function InterestsScreen() {
 
   return (
     <View style={styles.container}>
+      {/* STEP 1 — Basic Info */}
       {step === 1 && (
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.headerContainer}>
             <View style={styles.iconCircle}>
-              <Ionicons
-                name="person-circle-outline"
-                size={48}
-                color="#6366f1"
-              />
+              <Ionicons name="person-circle-outline" size={48} color="#6366f1" />
             </View>
             <Text style={styles.title}>Let's get to know you</Text>
             <Text style={styles.subtitle}>
@@ -245,6 +251,7 @@ export default function InterestsScreen() {
         </ScrollView>
       )}
 
+      {/* STEP 2 — Select Interests */}
       {step === 2 && (
         <View style={{ flex: 1 }}>
           <View style={styles.headerContainer}>
@@ -321,6 +328,7 @@ export default function InterestsScreen() {
         </View>
       )}
 
+      {/* STEP 3 — Success */}
       {step === 3 && (
         <Animated.View style={[styles.successContainer, { opacity: fadeAnim }]}>
           <View style={styles.successIconContainer}>

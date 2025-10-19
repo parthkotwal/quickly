@@ -1,4 +1,3 @@
-// app/login.tsx
 import {
   StyleSheet,
   View,
@@ -9,7 +8,9 @@ import {
 } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import { signIn } from "aws-amplify/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebaseConfig";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -20,13 +21,37 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     try {
       setLoading(true);
-      const { isSignedIn } = await signIn({ username: email, password });
-      console.log("✅ Cognito sign-in success:", isSignedIn);
+      console.log("🔐 Attempting login for:", email);
+
+      // Firebase sign in
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      console.log("✅ Firebase sign-in successful:", user.uid);
+
+      // Store user ID in AsyncStorage (using Firebase UID)
+      await AsyncStorage.setItem("userId", user.uid);
+      console.log("✅ Stored userId:", user.uid);
 
       router.replace("/chat");
     } catch (error: any) {
       console.error("❌ Login error:", error);
-      Alert.alert("Login failed", error.message || "Something went wrong");
+      console.log("⚠️ ERROR CODE:", error?.code);
+      console.log("⚠️ MESSAGE:", error?.message);
+
+      let errorMessage = error.message || "Something went wrong";
+
+      if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
+        errorMessage = "Incorrect email or password";
+      } else if (error.code === "auth/user-not-found") {
+        errorMessage = "No account found with this email";
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address";
+      } else if (error.code === "auth/user-disabled") {
+        errorMessage = "This account has been disabled";
+      }
+
+      Alert.alert("Login failed", errorMessage);
     } finally {
       setLoading(false);
     }
