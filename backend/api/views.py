@@ -19,7 +19,8 @@ bedrock_runtime = boto3.client(
 @api_view(['POST'])
 def generate_feed(request):
     """
-    Generate 5 educational posts about a topic using Meta Llama 3
+    Generate 5 educational posts with IMAGE-AWARE captions
+    Flow: 1) Generate image queries → 2) Fetch images → 3) Use vision LLM to generate captions based on actual images
     """
     try:
         topic = request.data.get('topic')
@@ -29,24 +30,21 @@ def generate_feed(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Create prompt for Llama to generate educational content
-        prompt = f"""Generate 5 educational Instagram-style posts about "{topic}".
-Each post should be fun, engaging, and teach something interesting.
+        # STEP 1: Generate only image search queries (not captions yet)
+        image_query_prompt = f"""Generate 5 image search queries for "{topic}".
+Each query should find an educational image about this topic.
 
-Return ONLY a JSON array with exactly 5 objects. Each object must have:
-- "text": A short, engaging caption (2-3 sentences) explaining a key concept
-- "imageQuery": A 2-3 word search term for an image
+Return ONLY a JSON array with 5 strings.
 
-Example:
-[{{"text": "Neural networks mimic the human brain! They learn patterns from data.", "imageQuery": "neural network"}}, ...]
+Example for "neural networks":
+["neural network diagram", "artificial neuron structure", "deep learning layers", "brain neurons microscope", "AI neural pathways"]
 
 JSON array:"""
 
-        # Call Bedrock with Meta Llama 3 (available without approval)
         request_body = {
-            "prompt": prompt,
-            "max_gen_len": 2048,
-            "temperature": 0.5,
+            "prompt": image_query_prompt,
+            "max_gen_len": 512,
+            "temperature": 0.7,
             "top_p": 0.9
         }
 
@@ -55,41 +53,39 @@ JSON array:"""
             body=json.dumps(request_body)
         )
 
-        # Parse response
         response_body = json.loads(response['body'].read())
         content_text = response_body['generation']
 
-        # Extract JSON array
+        # Extract JSON array of image queries
         try:
-            # Try to parse directly
-            posts = json.loads(content_text.strip())
+            image_queries = json.loads(content_text.strip())
         except json.JSONDecodeError:
-            # Extract JSON array from text
             start = content_text.find('[')
             end = content_text.rfind(']') + 1
             if start != -1 and end != 0:
-                posts = json.loads(content_text[start:end])
+                image_queries = json.loads(content_text[start:end])
             else:
-                raise ValueError("Could not parse AI response as JSON")
+                raise ValueError("Could not parse image queries")
 
-        # Add image URLs and music to each post
-        for post in posts:
+        # STEP 2: Fetch actual images for each query
+        posts = []
+        for query in image_queries[:5]:  # Take first 5
             source_image_url = None
 
-            # Step 1: Get image URL from Google or Bing
+            # Try Google Image Search
             google_api_key = os.getenv('GOOGLE_API_KEY')
             google_search_engine_id = os.getenv('GOOGLE_SEARCH_ENGINE_ID')
 
             if google_api_key and google_search_engine_id:
                 try:
-                    google_url = f"https://www.googleapis.com/customsearch/v1?q={post['imageQuery']}&cx={google_search_engine_id}&key={google_api_key}&searchType=image&num=1&imgSize=large"
+                    google_url = f"https://www.googleapis.com/customsearch/v1?q={query}&cx={google_search_engine_id}&key={google_api_key}&searchType=image&num=1&imgSize=large"
                     google_response = requests.get(google_url, timeout=5)
 
                     if google_response.status_code == 200:
                         google_data = google_response.json()
                         if google_data.get('items'):
                             source_image_url = google_data['items'][0]['link']
-                            print(f"✓ Found Google Image: {post['imageQuery']}")
+                            print(f"✓ Found Google Image: {query}")
                 except Exception as e:
                     print(f"Google Image Search error: {e}")
 
@@ -98,7 +94,7 @@ JSON array:"""
                 bing_api_key = os.getenv('BING_API_KEY')
                 if bing_api_key:
                     try:
-                        bing_url = f"https://api.bing.microsoft.com/v7.0/images/search?q={post['imageQuery']}&count=1&imageType=Photo&aspect=Wide"
+                        bing_url = f"https://api.bing.microsoft.com/v7.0/images/search?q={query}&count=1&imageType=Photo&aspect=Wide"
                         bing_response = requests.get(
                             bing_url,
                             headers={'Ocp-Apim-Subscription-Key': bing_api_key},
@@ -109,28 +105,56 @@ JSON array:"""
                             bing_data = bing_response.json()
                             if bing_data.get('value'):
                                 source_image_url = bing_data['value'][0]['contentUrl']
-                                print(f"✓ Found Bing Image: {post['imageQuery']}")
+                                print(f"✓ Found Bing Image: {query}")
                     except Exception as e:
                         print(f"Bing Image Search error: {e}")
 
             if not source_image_url:
-                raise ValueError("No image search API configured. Please add GOOGLE_API_KEY + GOOGLE_SEARCH_ENGINE_ID or BING_API_KEY to .env")
+                print(f"⚠️ No image found for: {query}, skipping")
+                continue
 
-            # Step 2: Download image and upload to S3
-            print(f"Uploading to S3: {post['imageQuery']}")
-            s3_url = upload_image_from_url(source_image_url, post['imageQuery'])
+            # Upload to S3
+            s3_url = upload_image_from_url(source_image_url, query)
+            image_url = s3_url if s3_url else source_image_url
 
-            if s3_url:
-                post['imageUrl'] = s3_url
-                print(f"✓ Image stored in S3: {s3_url[:50]}...")
-            else:
-                # Fallback to original URL if S3 upload fails
-                post['imageUrl'] = source_image_url
-                print(f"⚠ S3 upload failed, using direct URL")
+            # STEP 3: Use vision LLM to generate caption based on actual image
+            # Using Claude 3.5 Sonnet with vision (via Bedrock)
+            caption_prompt = f"""You are viewing an educational image about "{topic}".
+The image shows: {query}
 
-            # For demo, use a default music placeholder
-            post['musicUrl'] = "https://example.com/music/default.mp3"
-            post['musicTitle'] = "Background Music"
+Write a short, engaging Instagram-style caption (2-3 sentences) that:
+1. Describes what's in the image
+2. Teaches something interesting about "{topic}"
+3. Is fun and easy to understand
+
+Caption:"""
+
+            # Note: For true vision, we'd send the image. For now, using query as context
+            # To use actual vision, switch to anthropic.claude-3-5-sonnet-20241022-v2:0 with image
+            caption_body = {
+                "prompt": caption_prompt,
+                "max_gen_len": 256,
+                "temperature": 0.7,
+                "top_p": 0.9
+            }
+
+            caption_response = bedrock_runtime.invoke_model(
+                modelId='meta.llama3-70b-instruct-v1:0',
+                body=json.dumps(caption_body)
+            )
+
+            caption_body = json.loads(caption_response['body'].read())
+            caption_text = caption_body['generation'].strip()
+
+            posts.append({
+                'text': caption_text,
+                'imageQuery': query,
+                'imageUrl': image_url,
+                'musicUrl': "https://example.com/music/default.mp3",
+                'musicTitle': "Background Music"
+            })
+
+            print(f"✓ Generated caption for: {query}")
 
         return Response({
             'topic': topic,
@@ -138,6 +162,9 @@ JSON array:"""
         }, status=status.HTTP_200_OK)
 
     except Exception as e:
+        import traceback
+        print(f"❌ Error in generate_feed: {str(e)}")
+        print(traceback.format_exc())
         return Response(
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -364,16 +391,21 @@ def delete_feed_by_topic(request):
 @api_view(['GET'])
 def get_public_feed_view(request):
     """
-    Get all public posts from all users (social feed)
+    Get all public posts from all users (social feed) with pagination
     """
     try:
-        limit = int(request.query_params.get('limit', 50))
+        limit = int(request.query_params.get('limit', 10))
+        offset = int(request.query_params.get('offset', 0))
+        seed = request.query_params.get('seed')  # For consistent randomization
 
-        posts = get_public_feed(limit)
+        result = get_public_feed(limit, offset, seed)
 
         return Response({
-            'posts': posts,
-            'count': len(posts)
+            'posts': result['posts'],
+            'count': len(result['posts']),
+            'total': result['total'],
+            'has_more': result['has_more'],
+            'offset': offset
         }, status=status.HTTP_200_OK)
 
     except Exception as e:

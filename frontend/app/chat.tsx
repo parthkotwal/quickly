@@ -33,20 +33,29 @@ export default function ChatScreen() {
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
   const [currentTopic, setCurrentTopic] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [feedSeed] = useState(Date.now().toString()); // Consistent seed for pagination
 
   // Load feed data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      setOffset(0);
+      setFeedPosts([]);
       loadFeedData();
     }, [])
   );
 
-  const loadFeedData = async (filterTopic?: string) => {
+  const loadFeedData = async (filterTopic?: string, append = false) => {
+    if (loading) return;
+
     try {
+      setLoading(true);
       const userId = await AsyncStorage.getItem('userId');
 
       // Load topics from DynamoDB (user's own topics only)
-      if (userId) {
+      if (userId && !append) {
         const topicsResponse = await fetch(`${API_URL}/getTopics?userId=${userId}`);
         const topicsData = await topicsResponse.json();
         if (topicsResponse.ok && topicsData.topics) {
@@ -59,16 +68,20 @@ export default function ChatScreen() {
         let response;
         let data;
 
+        const currentOffset = append ? offset : 0;
+
         if (filterTopic) {
-          // Load user's specific topic
+          // Load user's specific topic (no pagination for now)
           response = await fetch(`${API_URL}/getFeedByTopic?userId=${userId}&topic=${encodeURIComponent(filterTopic)}`);
           data = await response.json();
           setCurrentTopic(filterTopic);
+          setHasMore(false); // No pagination for filtered topics
         } else {
-          // Load PUBLIC feed from all users (default view)
-          response = await fetch(`${API_URL}/getPublicFeed?limit=50`);
+          // Load PUBLIC feed with pagination
+          response = await fetch(`${API_URL}/getPublicFeed?limit=10&offset=${currentOffset}&seed=${feedSeed}`);
           data = await response.json();
           setCurrentTopic(null);
+          setHasMore(data.has_more || false);
         }
 
         if (response.ok && data.posts) {
@@ -88,11 +101,25 @@ export default function ChatScreen() {
             isLiked: likedPostIds.has(post.postId),
           }));
 
-          setFeedPosts(postsWithMetrics);
+          if (append) {
+            setFeedPosts(prev => [...prev, ...postsWithMetrics]);
+            setOffset(currentOffset + postsWithMetrics.length);
+          } else {
+            setFeedPosts(postsWithMetrics);
+            setOffset(postsWithMetrics.length);
+          }
         }
       }
     } catch (error) {
       console.error('Error loading feed data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMore = () => {
+    if (hasMore && !loading && !currentTopic) {
+      loadFeedData(undefined, true); // Load more posts (append)
     }
   };
 
@@ -272,6 +299,14 @@ export default function ChatScreen() {
       <ScrollView
         style={styles.feedContainer}
         showsVerticalScrollIndicator={false}
+        onScroll={({nativeEvent}) => {
+          const {layoutMeasurement, contentOffset, contentSize} = nativeEvent;
+          const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 20;
+          if (isCloseToBottom) {
+            loadMore();
+          }
+        }}
+        scrollEventThrottle={400}
       >
         {feedPosts.length === 0 ? (
           <View style={styles.emptyState}>
@@ -343,6 +378,20 @@ export default function ChatScreen() {
               </View>
             );
           })
+        )}
+
+        {/* Loading indicator at bottom */}
+        {loading && feedPosts.length > 0 && (
+          <View style={styles.loadingMore}>
+            <Text style={styles.loadingText}>Loading more...</Text>
+          </View>
+        )}
+
+        {/* No more posts indicator */}
+        {!hasMore && feedPosts.length > 0 && !currentTopic && (
+          <View style={styles.endOfFeed}>
+            <Text style={styles.endOfFeedText}>You've seen all posts! ✨</Text>
+          </View>
         )}
       </ScrollView>
     </View>

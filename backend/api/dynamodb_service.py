@@ -131,8 +131,8 @@ def get_user_posts(user_id):
 
     return active_posts
 
-def get_public_feed(limit=50):
-    """Get all public posts from all users - fully randomized"""
+def get_public_feed(limit=10, offset=0, seed=None):
+    """Get all public posts from all users - with pagination for infinite scroll"""
     table = get_posts_table()
 
     # Scan table for public posts (isPrivate = False or not set)
@@ -146,14 +146,23 @@ def get_public_feed(limit=50):
 
     posts = response.get('Items', [])
 
-    # Fully randomize - like TikTok For You Page
+    # Randomize with seed for consistent order across pagination
     import random
 
-    # Shuffle all public posts randomly
+    if seed:
+        random.seed(seed)  # Use seed for consistent randomization
+
     random.shuffle(posts)
 
-    # Return limited number
-    return posts[:limit]
+    # Return paginated posts
+    start = offset
+    end = offset + limit
+
+    return {
+        'posts': posts[start:end],
+        'total': len(posts),
+        'has_more': end < len(posts)
+    }
 
 def get_user_topics(user_id):
     """Get unique topics for a user (excluding deleted ones)"""
