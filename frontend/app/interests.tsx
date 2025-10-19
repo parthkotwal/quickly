@@ -14,6 +14,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { signUp } from "aws-amplify/auth";
+import Fuse from 'fuse.js';
 
 const HIGH_SCHOOL_TOPICS = [
   "Mathematics",
@@ -48,6 +49,28 @@ const COLLEGE_TOPICS = {
   Default: ["Psychology", "Philosophy", "Design Thinking", "Engineering"],
 };
 
+const MAJOR_KEYWORDS = [
+  { key: "CS", values: ["cs", "computer science", "comp sci", "computr scienc", "compsci", "computing"] },
+  { key: "Business", values: ["business", "biz", "bussiness", "commerce", "entrepreneur", "marketing", "finance"] },
+  { key: "Biology", values: ["bio", "biology", "biolgy", "biol", "biological", "genetics", "neuro", "biochem", "immunology"] },
+];
+
+function fuzzyMajorKey(major: string) {
+  if (!major) return null;
+  const input = major.toLowerCase().trim();
+  let bestKey = null;
+  let bestScore = 0.4; // minimum similarity threshold
+  for (const { key, values } of MAJOR_KEYWORDS) {
+    const fuse = new Fuse(values, { includeScore: true, threshold: 0.4 });
+    const result = fuse.search(input);
+    if (result.length > 0 && result[0]?.score !== undefined && (1 - result[0].score) > bestScore) {
+      bestScore = 1 - result[0].score;
+      bestKey = key;
+    }
+  }
+  return bestKey;
+}
+
 export default function InterestsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ email: string; password: string }>();
@@ -74,20 +97,18 @@ export default function InterestsScreen() {
 
   const getTopics = () => {
     if (educationLevel === "High School") return HIGH_SCHOOL_TOPICS;
-    if (major.toLowerCase().includes("cs")) return COLLEGE_TOPICS.CS;
-    if (major.toLowerCase().includes("business"))
-      return COLLEGE_TOPICS.Business;
-    if (major.toLowerCase().includes("bio")) return COLLEGE_TOPICS.Biology;
+    const majorKey = fuzzyMajorKey(major) as keyof typeof COLLEGE_TOPICS | null;
+    if (majorKey && COLLEGE_TOPICS[majorKey]) return COLLEGE_TOPICS[majorKey];
     return COLLEGE_TOPICS.Default;
   };
 
   const toggleTopic = (topic: string) => {
     if (selected.includes(topic)) {
       setSelected(selected.filter((t) => t !== topic));
-    } else if (selected.length < 5) {
+    } else if (selected.length < 3) {
       setSelected([...selected, topic]);
     } else {
-      Alert.alert("Limit Reached", "You can select up to 5 topics.");
+      Alert.alert("Limit Reached", "You can select up to 3 topics.");
     }
   };
 
@@ -104,10 +125,10 @@ export default function InterestsScreen() {
       }
       setStep(2);
     } else if (step === 2) {
-      if (selected.length < 5) {
+      if (selected.length < 3) {
         Alert.alert(
-          "Select 5 topics",
-          "Please select exactly 5 interests to continue."
+          "Select 3 topics",
+          "Please select exactly 3 interests to continue."
         );
         return;
       }
