@@ -347,7 +347,7 @@ export default function InterestsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#fff", // White background
     padding: 24,
     paddingTop: 60,
   },
@@ -367,6 +367,7 @@ const styles = StyleSheet.create({
     color: "#111827",
     marginBottom: 8,
     textAlign: "center",
+    fontFamily: "CodecPro",
   },
   subtitle: {
     fontSize: 16,
@@ -375,6 +376,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 20,
     lineHeight: 24,
+    fontFamily: "CodecPro",
   },
   formContainer: {
     backgroundColor: "#fff",
@@ -388,12 +390,14 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1.5,
-    borderColor: "#e5e7eb",
+    borderColor: "#1b17ff", // Vivid Blue border
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
     marginBottom: 20,
     backgroundColor: "#f9fafb",
+    fontFamily: "CodecPro",
+    color: "#111827", // Black text for input
   },
   label: {
     fontSize: 15,
@@ -401,6 +405,7 @@ const styles = StyleSheet.create({
     color: "#374151",
     marginBottom: 12,
     marginTop: 8,
+    fontFamily: "CodecPro",
   },
   optionsContainer: { marginBottom: 12 },
   optionButton: {
@@ -413,12 +418,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   optionSelected: {
-    backgroundColor: "#6366f1",
-    borderColor: "#6366f1",
+    backgroundColor: "#1b17ff", // Vivid Blue for selected options
+    borderColor: "#1b17ff",
   },
   optionContent: { flexDirection: "row", alignItems: "center", gap: 12 },
-  optionText: { color: "#374151", fontSize: 16, fontWeight: "500" },
-  optionTextSelected: { color: "#fff", fontWeight: "600" },
+  optionText: { color: "#374151", fontSize: 16, fontWeight: "500", fontFamily: "CodecPro" },
+  optionTextSelected: { color: "#fff", fontWeight: "600", fontFamily: "CodecPro" },
   progressContainer: { width: "100%", alignItems: "center", marginTop: 8 },
   progressBar: {
     width: "80%",
@@ -428,8 +433,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 8,
   },
-  progressFill: { height: "100%", backgroundColor: "#6366f1", borderRadius: 4 },
-  progressText: { fontSize: 14, fontWeight: "600", color: "#6366f1" },
+  progressFill: { height: "100%", backgroundColor: "#1b17ff", borderRadius: 4 },
+  progressText: { fontSize: 14, fontWeight: "600", color: "#1b17ff", fontFamily: "CodecPro" },
   list: { paddingHorizontal: 8, paddingTop: 8 },
   topicButton: {
     borderWidth: 2,
@@ -443,8 +448,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   topicSelected: {
-    backgroundColor: "#6366f1",
-    borderColor: "#6366f1",
+    backgroundColor: "#1b17ff", // Vivid Blue for selected topics
+    borderColor: "#1b17ff",
   },
   checkmarkBadge: {
     position: "absolute",
@@ -459,10 +464,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#fff",
   },
-  topicText: { color: "#374151", fontSize: 15, fontWeight: "600" },
-  topicTextSelected: { color: "#fff", fontWeight: "700" },
+  topicText: { color: "#374151", fontSize: 15, fontWeight: "600", fontFamily: "CodecPro" },
+  topicTextSelected: { color: "#fff", fontWeight: "700", fontFamily: "CodecPro" },
   continueButton: {
-    backgroundColor: "#6366f1",
+    backgroundColor: "#1b17ff", // Vivid Blue for buttons
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -473,7 +478,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   continueButtonDisabled: { backgroundColor: "#9ca3af" },
-  continueText: { color: "#fff", fontSize: 17, fontWeight: "bold" },
+  continueText: { color: "#fff", fontSize: 17, fontWeight: "bold", fontFamily: "CodecPro" },
   successContainer: {
     flex: 1,
     alignItems: "center",
@@ -486,6 +491,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#111827",
     marginBottom: 12,
+    fontFamily: "CodecPro",
   },
   successText: {
     fontSize: 18,
@@ -494,5 +500,6 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     textAlign: "center",
     lineHeight: 26,
+    fontFamily: "CodecPro",
   },
 });

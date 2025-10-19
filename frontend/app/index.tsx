@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 
@@ -16,8 +16,8 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Quickly</Text>
-      <Text style={styles.subtitle}>Welcome</Text>
+      <Image source={require('../assets/logo.png')} style={styles.logo} />
+      {/* <Text style={styles.title}>Quickly</Text> */}
     </View>
   );
 }
@@ -25,18 +25,21 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logo: {
+    width: 350,
+    height: 350,
+    marginBottom: 0,
+    resizeMode: 'contain',
   },
   title: {
     fontSize: 48,
     fontWeight: 'bold',
     color: '#fff',
+    fontFamily: 'CodecPro',
     marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 20,
-    color: '#e0e7ff',
   },
 });

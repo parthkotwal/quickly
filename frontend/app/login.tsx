@@ -87,46 +87,84 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  content: { flex: 1, padding: 24, justifyContent: "center" },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff', // White background for login/signup
+  },
+  content: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
+  },
   title: {
     fontSize: 32,
-    fontWeight: "bold",
-    color: "#111827",
+    fontWeight: 'bold',
+    color: '#111827', // Black text for title
     marginBottom: 8,
+    fontFamily: 'CodecPro',
   },
-  subtitle: { fontSize: 16, color: "#6b7280", marginBottom: 32 },
-  form: { gap: 20 },
-  inputContainer: { gap: 8 },
-  label: { fontSize: 14, fontWeight: "600", color: "#374151" },
+  subtitle: {
+    fontSize: 16,
+    color: '#1b17ff', // Black text for subtitle
+    marginBottom: 32,
+    fontFamily: 'CodecPro',
+  },
+  form: {
+    gap: 20,
+  },
+  inputContainer: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827', // Black for label
+    fontFamily: 'CodecPro',
+  },
   input: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb', // Light background for input
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: '#1b17ff', // Vivid Blue border
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
-    color: "#111827",
+    color: '#111827', // Black text for input
+    fontFamily: 'CodecPro',
   },
   forgotPassword: {
     fontSize: 14,
-    color: "#6366f1",
-    textAlign: "right",
-    fontWeight: "600",
+    color: '#1b17ff', // Vivid Blue for forgot password
+    textAlign: 'right',
+    fontWeight: '600',
+    fontFamily: 'CodecPro',
   },
   loginButton: {
-    backgroundColor: "#6366f1",
+    backgroundColor: '#1b17ff', // Vivid Blue button
     borderRadius: 8,
     padding: 16,
-    alignItems: "center",
+    alignItems: 'center',
     marginTop: 8,
   },
-  loginButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
-  signupContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
+  loginButtonText: {
+    color: '#fff', // White text for button
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: 'CodecPro',
   },
-  signupText: { fontSize: 14, color: "#6b7280" },
-  signupLink: { fontSize: 14, color: "#6366f1", fontWeight: "600" },
+  signupContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  signupText: {
+    fontSize: 14,
+    color: '#111827', // Black text for signup
+    fontFamily: 'CodecPro',
+  },
+  signupLink: {
+    fontSize: 14,
+    color: '#1b17ff', // Vivid Blue for signup link
+    fontWeight: '600',
+    fontFamily: 'CodecPro',
+  },
 });

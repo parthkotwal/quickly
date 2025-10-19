@@ -96,7 +96,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#fff", // White background for settings
   },
   header: {
     paddingTop: 60,
@@ -109,7 +109,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#111827",
+    color: "#111827", // Black text for header
+    fontFamily: "CodecPro",
   },
   content: {
     flex: 1,
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#e0e7ff",
+    backgroundColor: "#1b17ff", // Vivid Blue avatar background
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -133,7 +134,8 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#111827",
+    color: "#111827", // Black text for username
+    fontFamily: "CodecPro",
   },
   settingsList: {
     backgroundColor: "#fff",
@@ -158,11 +160,13 @@ const styles = StyleSheet.create({
   settingsItemTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#111827",
+    color: "#1b17ff", // Vivid Blue for settings item title
+    fontFamily: "CodecPro",
   },
   settingsItemSubtitle: {
     fontSize: 14,
-    color: "#6b7280",
+    color: "#111827", // Black for subtitle
+    fontFamily: "CodecPro",
   },
   logoutButton: {
     backgroundColor: "#fff",
@@ -171,11 +175,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#ef4444",
+    borderColor: "#1b17ff", // Vivid Blue border for logout
   },
   logoutButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ef4444",
+    color: "#1b17ff", // Vivid Blue for logout text
+    fontFamily: "CodecPro",
   },
 });

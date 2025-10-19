@@ -106,7 +106,7 @@ export default function ChatScreen() {
             <Ionicons name="heart-outline" size={28} color="#111827" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="person-circle" size={32} color="#6366f1" />
+            <Ionicons name="person-circle" size={32} color="#111827" />
           </TouchableOpacity>
         </View>
       </View>
@@ -221,7 +221,7 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fff', // White background for chat
   },
   header: {
     flexDirection: 'row',
@@ -242,7 +242,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
+    color: '#111827', // Black text for header
+    fontFamily: 'CodecPro',
   },
   headerRight: {
     flexDirection: 'row',

@@ -187,7 +187,7 @@ export default function ChatbotScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fff', // White background for chatbot
   },
   header: {
     flexDirection: 'row',
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff', // White header
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
@@ -208,7 +208,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
+    color: '#111827', // Black text for header
+    fontFamily: 'CodecPro',
   },
   headerRight: {
     flexDirection: 'row',
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
   dropdown: {
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#1b17ff', // Vivid Blue border
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -237,8 +238,9 @@ const styles = StyleSheet.create({
   },
   dropdownText: {
     fontSize: 16,
-    color: '#111827',
+    color: '#1b17ff', // Vivid Blue for dropdown text
     fontWeight: '500',
+    fontFamily: 'CodecPro',
   },
   content: {
     flex: 1,
@@ -270,20 +272,22 @@ const styles = StyleSheet.create({
   botBubble: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#1b17ff', // Vivid Blue border for bot messages
   },
   userBubble: {
-    backgroundColor: '#6366f1',
+    backgroundColor: '#1b17ff', // Vivid Blue for user messages
   },
   messageText: {
     fontSize: 16,
     lineHeight: 22,
   },
   botText: {
-    color: '#111827',
+    color: '#111827', // Black text for bot
+    fontFamily: 'CodecPro',
   },
   userText: {
-    color: '#fff',
+    color: '#fff', // White text for user
+    fontFamily: 'CodecPro',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -298,23 +302,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f9fafb',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#1b17ff', // Vivid Blue border
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#111827',
+    color: '#111827', // Black text for input
     maxHeight: 100,
+    fontFamily: 'CodecPro',
   },
   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#1b17ff', // Vivid Blue for send button
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#e5e7eb', // Keep disabled as light gray
   },
 });

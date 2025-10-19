@@ -100,40 +100,77 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  content: { flex: 1, padding: 24, justifyContent: "center" },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff', // White background for signup
+  },
+  content: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
+  },
   title: {
     fontSize: 32,
-    fontWeight: "bold",
-    color: "#111827",
+    fontWeight: 'bold',
+    color: '#111827', // Black text for title
     marginBottom: 8,
+    fontFamily: 'CodecPro',
   },
-  subtitle: { fontSize: 16, color: "#6b7280", marginBottom: 32 },
-  form: { gap: 20 },
-  inputContainer: { gap: 8 },
-  label: { fontSize: 14, fontWeight: "600", color: "#374151" },
+  subtitle: {
+    fontSize: 16,
+    color: '#1b17ff', // Vivid Blue for subtitle
+    marginBottom: 32,
+    fontFamily: 'CodecPro',
+  },
+  form: {
+    gap: 20,
+  },
+  inputContainer: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827', // Vivid Blue for label
+    fontFamily: 'CodecPro',
+  },
   input: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb', // Light background for input
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: '#1b17ff', // Vivid Blue border
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
-    color: "#111827",
+    color: '#111827', // Black text for input
+    fontFamily: 'CodecPro',
   },
   signupButton: {
-    backgroundColor: "#6366f1",
+    backgroundColor: '#1b17ff', // Vivid Blue button
     borderRadius: 8,
     padding: 16,
-    alignItems: "center",
+    alignItems: 'center',
     marginTop: 8,
   },
-  signupButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  signupButtonText: {
+    color: '#fff', // White text for button
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: 'CodecPro',
+  },
   loginContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
   },
-  loginText: { fontSize: 14, color: "#6b7280" },
-  loginLink: { fontSize: 14, color: "#6366f1", fontWeight: "600" },
+  loginText: {
+    fontSize: 14,
+    color: '#111827', // Black text for signup
+    fontFamily: 'CodecPro',
+  },
+  loginLink: {
+    fontSize: 14,
+    color: '#1b17ff', // Vivid Blue for signup link
+    fontWeight: '600',
+    fontFamily: 'CodecPro',
+  },
 });
