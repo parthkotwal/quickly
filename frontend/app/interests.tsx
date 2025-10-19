@@ -1,5 +1,5 @@
 // app/interests.tsx
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -9,10 +9,12 @@ import {
   StyleSheet,
   Alert,
   Animated,
+  ScrollView,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebaseConfig";
+import { Ionicons } from '@expo/vector-icons';
 
 const HIGH_SCHOOL_TOPICS = [
   "Mathematics",
@@ -140,70 +142,109 @@ export default function InterestsScreen() {
   return (
     <View style={styles.container}>
       {step === 1 && (
-        <View>
-          <Text style={styles.title}>Let’s get to know you 👋</Text>
-          <Text style={styles.subtitle}>
-            This helps us personalize your feed.
-          </Text>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.headerContainer}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="person-circle-outline" size={48} color="#6366f1" />
+            </View>
+            <Text style={styles.title}>Let's get to know you</Text>
+            <Text style={styles.subtitle}>
+              This helps us personalize your learning experience
+            </Text>
+          </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Your Name"
-            value={name}
-            onChangeText={setName}
-          />
+          <View style={styles.formContainer}>
+            <Text style={styles.label}>Your Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your name"
+              placeholderTextColor="#9ca3af"
+              value={name}
+              onChangeText={setName}
+            />
 
-          <Text style={styles.label}>Education Level</Text>
-          {["High School", "Undergraduate", "Graduate"].map((level) => (
-            <TouchableOpacity
-              key={level}
-              style={[
-                styles.optionButton,
-                educationLevel === level && styles.optionSelected,
-              ]}
-              onPress={() => setEducationLevel(level as any)}
-            >
-              <Text
-                style={[
-                  styles.optionText,
-                  educationLevel === level && styles.optionTextSelected,
-                ]}
-              >
-                {level}
-              </Text>
+            <Text style={styles.label}>Education Level</Text>
+            <View style={styles.optionsContainer}>
+              {["High School", "Undergraduate", "Graduate"].map((level) => (
+                <TouchableOpacity
+                  key={level}
+                  style={[
+                    styles.optionButton,
+                    educationLevel === level && styles.optionSelected,
+                  ]}
+                  onPress={() => setEducationLevel(level as any)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.optionContent}>
+                    <Ionicons
+                      name={educationLevel === level ? "checkmark-circle" : "ellipse-outline"}
+                      size={20}
+                      color={educationLevel === level ? "#fff" : "#6366f1"}
+                    />
+                    <Text
+                      style={[
+                        styles.optionText,
+                        educationLevel === level && styles.optionTextSelected,
+                      ]}
+                    >
+                      {level}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {educationLevel === "High School" && (
+              <Animated.View>
+                <Text style={styles.label}>Grade</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g., 9th, 10th, 11th, 12th"
+                  placeholderTextColor="#9ca3af"
+                  value={grade}
+                  onChangeText={setGrade}
+                />
+              </Animated.View>
+            )}
+
+            {educationLevel && educationLevel !== "High School" && (
+              <Animated.View>
+                <Text style={styles.label}>Major / Field of Study</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g., Computer Science"
+                  placeholderTextColor="#9ca3af"
+                  value={major}
+                  onChangeText={setMajor}
+                />
+              </Animated.View>
+            )}
+
+            <TouchableOpacity style={styles.continueButton} onPress={nextStep} activeOpacity={0.8}>
+              <Text style={styles.continueText}>Continue</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
             </TouchableOpacity>
-          ))}
-
-          {educationLevel === "High School" && (
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your grade (1st - 12th)"
-              value={grade}
-              onChangeText={setGrade}
-            />
-          )}
-
-          {educationLevel && educationLevel !== "High School" && (
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your major (e.g. Computer Science)"
-              value={major}
-              onChangeText={setMajor}
-            />
-          )}
-
-          <TouchableOpacity style={styles.continueButton} onPress={nextStep}>
-            <Text style={styles.continueText}>Continue</Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+        </ScrollView>
       )}
 
       {step === 2 && (
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Choose your interests 🎯</Text>
-          <Text style={styles.subtitle}>
-            Pick exactly 5 topics you’d like to learn about.
-          </Text>
+          <View style={styles.headerContainer}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="bulb-outline" size={48} color="#6366f1" />
+            </View>
+            <Text style={styles.title}>Choose your interests</Text>
+            <Text style={styles.subtitle}>
+              Pick exactly 5 topics you'd like to learn about
+            </Text>
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${(selected.length / 5) * 100}%` }]} />
+              </View>
+              <Text style={styles.progressText}>{selected.length} / 5 selected</Text>
+            </View>
+          </View>
 
           <FlatList
             data={getTopics()}
@@ -216,7 +257,13 @@ export default function InterestsScreen() {
                   selected.includes(item) && styles.topicSelected,
                 ]}
                 onPress={() => toggleTopic(item)}
+                activeOpacity={0.7}
               >
+                {selected.includes(item) && (
+                  <View style={styles.checkmarkBadge}>
+                    <Ionicons name="checkmark" size={12} color="#fff" />
+                  </View>
+                )}
                 <Text
                   style={[
                     styles.topicText,
@@ -228,30 +275,38 @@ export default function InterestsScreen() {
               </TouchableOpacity>
             )}
             contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
           />
 
           <TouchableOpacity
             style={[
               styles.continueButton,
-              selected.length < 5 && { opacity: 0.5 },
+              selected.length < 5 && styles.continueButtonDisabled,
             ]}
             disabled={selected.length < 5 || loading}
             onPress={nextStep}
+            activeOpacity={0.8}
           >
             <Text style={styles.continueText}>
               {loading ? "Creating Account..." : "Continue"}
             </Text>
+            {!loading && <Ionicons name="arrow-forward" size={20} color="#fff" />}
           </TouchableOpacity>
         </View>
       )}
 
       {step === 3 && (
         <Animated.View style={[styles.successContainer, { opacity: fadeAnim }]}>
+          <View style={styles.successIconContainer}>
+            <Ionicons name="checkmark-circle" size={80} color="#10b981" />
+          </View>
+          <Text style={styles.successTitle}>All Set!</Text>
           <Text style={styles.successText}>
-            You’re all set to gain knowledge! 🚀
+            You're ready to start your personalized learning journey
           </Text>
-          <TouchableOpacity style={styles.continueButton} onPress={nextStep}>
-            <Text style={styles.continueText}>Go to Chat</Text>
+          <TouchableOpacity style={styles.continueButton} onPress={nextStep} activeOpacity={0.8}>
+            <Text style={styles.continueText}>Start Learning</Text>
+            <Ionicons name="arrow-forward" size={20} color="#fff" />
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -260,60 +315,228 @@ export default function InterestsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 24, paddingTop: 60 },
+  container: {
+    flex: 1,
+    backgroundColor: "#f9fafb",
+    padding: 24,
+    paddingTop: 60
+  },
+  headerContainer: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  iconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#eef2ff",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "bold",
     color: "#111827",
     marginBottom: 8,
+    textAlign: "center",
   },
-  subtitle: { fontSize: 16, color: "#6b7280", marginBottom: 24 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    padding: 12,
+  subtitle: {
     fontSize: 16,
-    marginBottom: 16,
+    color: "#6b7280",
+    marginBottom: 24,
+    textAlign: "center",
+    paddingHorizontal: 20,
+    lineHeight: 24,
   },
-  label: { fontSize: 14, fontWeight: "600", color: "#374151", marginBottom: 8 },
+  formContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  input: {
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    marginBottom: 20,
+    backgroundColor: "#f9fafb",
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  optionsContainer: {
+    marginBottom: 12,
+  },
   optionButton: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 12,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  optionSelected: { backgroundColor: "#6366f1", borderColor: "#6366f1" },
-  optionText: { color: "#374151", fontSize: 16 },
-  optionTextSelected: { color: "#fff" },
-  list: { alignItems: "center" },
+  optionSelected: {
+    backgroundColor: "#6366f1",
+    borderColor: "#6366f1",
+    shadowColor: "#6366f1",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  optionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  optionText: {
+    color: "#374151",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  optionTextSelected: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  progressContainer: {
+    width: "100%",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  progressBar: {
+    width: "80%",
+    height: 8,
+    backgroundColor: "#e5e7eb",
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#6366f1",
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6366f1",
+  },
+  list: {
+    paddingHorizontal: 8,
+    paddingTop: 8,
+  },
   topicButton: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: "#e5e7eb",
+    borderRadius: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     margin: 6,
+    backgroundColor: "#fff",
+    minWidth: 140,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    position: "relative",
   },
-  topicSelected: { backgroundColor: "#6366f1", borderColor: "#6366f1" },
-  topicText: { color: "#374151", fontSize: 14, fontWeight: "500" },
-  topicTextSelected: { color: "#fff" },
+  topicSelected: {
+    backgroundColor: "#6366f1",
+    borderColor: "#6366f1",
+    shadowColor: "#6366f1",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  checkmarkBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#10b981",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  topicText: {
+    color: "#374151",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  topicTextSelected: {
+    color: "#fff",
+    fontWeight: "700",
+  },
   continueButton: {
     backgroundColor: "#6366f1",
-    borderRadius: 8,
-    paddingVertical: 14,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     alignItems: "center",
     marginTop: 20,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    shadowColor: "#6366f1",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  continueText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
-  successContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
-  successText: {
-    fontSize: 20,
-    fontWeight: "600",
+  continueButtonDisabled: {
+    backgroundColor: "#9ca3af",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+  },
+  continueText: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "bold",
+  },
+  successContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+  },
+  successIconContainer: {
+    marginBottom: 24,
+  },
+  successTitle: {
+    fontSize: 36,
+    fontWeight: "bold",
     color: "#111827",
-    marginVertical: 20,
+    marginBottom: 12,
+  },
+  successText: {
+    fontSize: 18,
+    fontWeight: "500",
+    color: "#6b7280",
+    marginBottom: 32,
     textAlign: "center",
+    lineHeight: 26,
   },
 });
