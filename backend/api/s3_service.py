@@ -4,6 +4,12 @@ import requests
 from datetime import datetime
 import hashlib
 from botocore.exceptions import ClientError
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from botocore.exceptions import NoCredentialsError
+import uuid
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Initialize S3 client
 s3_client = boto3.client(
@@ -12,7 +18,6 @@ s3_client = boto3.client(
     aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
 )
-
 BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'quickly-images')
 S3_REGION = os.getenv('AWS_DEFAULT_REGION', 'us-east-1')
 
@@ -151,3 +156,37 @@ def delete_image(s3_url):
     except Exception as e:
         print(f"Error deleting from S3: {e}")
         return False
+def upload_image_file(file_obj: InMemoryUploadedFile, user_id: str):
+    """
+    Upload a local image file (from React Native FormData) to S3.
+    Returns the public S3 URL.
+    """
+    try:
+        # Ensure bucket exists
+        create_bucket_if_not_exists()
+
+        # Generate unique file name
+        file_extension = file_obj.name.split('.')[-1]
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"user_uploads/{user_id}/{timestamp}_{uuid.uuid4()}.{file_extension}"
+
+        # Upload file object
+        s3_client.upload_fileobj(
+            file_obj,
+            BUCKET_NAME,
+            filename,
+            ExtraArgs={
+                'ContentType': file_obj.content_type,
+            }
+        )
+
+        s3_url = f"https://{BUCKET_NAME}.s3.{S3_REGION}.amazonaws.com/{filename}"
+        print(f"✅ Uploaded local image to S3: {s3_url}")
+        return s3_url
+
+    except NoCredentialsError:
+        print("❌ AWS credentials not configured properly.")
+        return None
+    except Exception as e:
+        print(f"❌ Error uploading image file: {e}")
+        return None

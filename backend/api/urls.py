@@ -13,4 +13,8 @@ urlpatterns = [
     path('getLikedPosts', views.get_liked_posts, name='get_liked_posts'),
     path('getTopics', views.get_topics, name='get_topics'),
     path('health', views.health_check, name='health_check'),
+    path('uploadImage', views.upload_image, name='upload_image'),
+    path('generateFlashcards', views.generate_flashcards, name='generate_flashcards'),
+    path('generateQuiz', views.generate_quiz, name='generate_quiz'),
+
 ]
