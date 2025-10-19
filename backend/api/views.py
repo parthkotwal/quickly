@@ -72,9 +72,53 @@ JSON array:"""
 
         # Add image URLs and music to each post
         for post in posts:
-            # For demo, use placeholder images
-            # In production, integrate with Unsplash API or Google Custom Search
-            post['imageUrl'] = f"https://source.unsplash.com/800x600/?{post['imageQuery'].replace(' ', ',')}"
+            image_url = None
+
+            # Try Google Custom Search
+            google_api_key = os.getenv('GOOGLE_API_KEY')
+            google_search_engine_id = os.getenv('GOOGLE_SEARCH_ENGINE_ID')
+
+            print(f"DEBUG - Google API Key: {google_api_key[:10] if google_api_key else 'NOT SET'}...")
+            print(f"DEBUG - Google Search Engine ID: {google_search_engine_id if google_search_engine_id else 'NOT SET'}")
+
+            if google_api_key and google_search_engine_id:
+                try:
+                    google_url = f"https://www.googleapis.com/customsearch/v1?q={post['imageQuery']}&cx={google_search_engine_id}&key={google_api_key}&searchType=image&num=1&imgSize=large"
+                    google_response = requests.get(google_url, timeout=5)
+
+                    if google_response.status_code == 200:
+                        google_data = google_response.json()
+                        if google_data.get('items'):
+                            image_url = google_data['items'][0]['link']
+                            print(f"✓ Google Image: {post['imageQuery']}")
+                except Exception as e:
+                    print(f"Google Image Search error: {e}")
+
+            # Try Bing Image Search if Google not configured
+            if not image_url:
+                bing_api_key = os.getenv('BING_API_KEY')
+                if bing_api_key:
+                    try:
+                        bing_url = f"https://api.bing.microsoft.com/v7.0/images/search?q={post['imageQuery']}&count=1&imageType=Photo&aspect=Wide"
+                        bing_response = requests.get(
+                            bing_url,
+                            headers={'Ocp-Apim-Subscription-Key': bing_api_key},
+                            timeout=5
+                        )
+
+                        if bing_response.status_code == 200:
+                            bing_data = bing_response.json()
+                            if bing_data.get('value'):
+                                image_url = bing_data['value'][0]['contentUrl']
+                                print(f"✓ Bing Image: {post['imageQuery']}")
+                    except Exception as e:
+                        print(f"Bing Image Search error: {e}")
+
+            if not image_url:
+                raise ValueError("No image search API configured. Please add GOOGLE_API_KEY + GOOGLE_SEARCH_ENGINE_ID or BING_API_KEY to .env")
+
+            post['imageUrl'] = image_url
+
             # For demo, use a default music placeholder
             post['musicUrl'] = "https://example.com/music/default.mp3"
             post['musicTitle'] = "Background Music"
