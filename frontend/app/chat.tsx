@@ -60,6 +60,13 @@ export default function ChatScreen() {
   const [feedSeed] = useState(Date.now().toString());
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [savedFlashcards, setSavedFlashcards] = useState<
+    Array<{
+      id: string;
+      title: string;
+      createdAt: string;
+    }>
+  >([]);
 
   const slideAnim = useRef(new Animated.Value(-300)).current;
 
@@ -71,10 +78,44 @@ export default function ChatScreen() {
     }).start();
   }, [sidebarVisible]);
 
+  const loadSavedFlashcards = async () => {
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) return;
+
+      // Dummy endpoint for now - replace with actual backend call
+      const response = await fetch(
+        `${API_URL}/getSavedFlashcards?userId=${userId}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setSavedFlashcards(data.flashcards || []);
+      } else {
+        // Dummy data for development
+        setSavedFlashcards([
+          { id: "1", title: "Math Formulas", createdAt: "2024-10-19" },
+          { id: "2", title: "Biology Notes", createdAt: "2024-10-18" },
+          { id: "3", title: "History Facts", createdAt: "2024-10-17" },
+          { id: "4", title: "Chemistry Equations", createdAt: "2024-10-16" },
+          { id: "5", title: "Physics Laws", createdAt: "2024-10-15" },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error loading saved flashcards:", error);
+      // Set dummy data on error
+      setSavedFlashcards([
+        { id: "1", title: "Math Formulas", createdAt: "2024-10-19" },
+        { id: "2", title: "Biology Notes", createdAt: "2024-10-18" },
+        { id: "3", title: "History Facts", createdAt: "2024-10-17" },
+      ]);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       setOffset(0);
       setFeedPosts([]);
+      loadSavedFlashcards();
       const newTopic = params.newTopic as string;
       if (newTopic) loadFeedData(newTopic);
       else loadFeedData();
@@ -172,10 +213,80 @@ export default function ChatScreen() {
       );
       if (response.ok) {
         if (currentTopic === topic) setCurrentTopic(null);
-        loadFeedData(currentTopic === topic ? undefined : currentTopic);
+        loadFeedData(
+          currentTopic === topic ? undefined : currentTopic || undefined
+        );
       }
     } catch (error) {
       console.error("Error deleting feed:", error);
+    }
+  };
+
+  const deleteFlashcard = async (flashcardId: string) => {
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) return;
+
+      // Dummy endpoint for now - replace with actual backend call
+      const response = await fetch(
+        `${API_URL}/deleteFlashcard?userId=${userId}&flashcardId=${flashcardId}`,
+        { method: "DELETE" }
+      );
+
+      if (response.ok || true) {
+        // Always succeed for now with dummy data
+        setSavedFlashcards((prev) =>
+          prev.filter((fc) => fc.id !== flashcardId)
+        );
+      }
+    } catch (error) {
+      console.error("Error deleting flashcard:", error);
+      // Still remove from local state for demo purposes
+      setSavedFlashcards((prev) => prev.filter((fc) => fc.id !== flashcardId));
+    }
+  };
+
+  const openFlashcard = async (flashcardId: string) => {
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) return;
+
+      // Dummy endpoint for now - replace with actual backend call
+      const response = await fetch(
+        `${API_URL}/getFlashcard?userId=${userId}&flashcardId=${flashcardId}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        router.push({
+          pathname: "/flashcards",
+          params: {
+            data: encodeURIComponent(JSON.stringify(data.flashcards || [])),
+          },
+        });
+      } else {
+        // Dummy flashcard data for development
+        const dummyFlashcards = [
+          {
+            topic: "Sample Topic 1",
+            explanation:
+              "This is a sample explanation for the first flashcard.",
+          },
+          {
+            topic: "Sample Topic 2",
+            explanation:
+              "This is a sample explanation for the second flashcard.",
+          },
+        ];
+        router.push({
+          pathname: "/flashcards",
+          params: {
+            data: encodeURIComponent(JSON.stringify(dummyFlashcards)),
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error opening flashcard:", error);
     }
   };
 
@@ -507,6 +618,53 @@ export default function ChatScreen() {
                     ))}
                   </>
                 )}
+
+                {savedFlashcards.length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
+                      FLASHCARDS
+                    </Text>
+                    {savedFlashcards.map((flashcard, i) => (
+                      <View key={flashcard.id} style={styles.sidebarItemRow}>
+                        <TouchableOpacity
+                          style={[
+                            styles.sidebarItem,
+                            styles.sidebarItemWithDelete,
+                          ]}
+                          onPress={() => {
+                            setSidebarVisible(false);
+                            openFlashcard(flashcard.id);
+                          }}
+                        >
+                          <Ionicons name="card" size={20} color="#6b7280" />
+                          <View style={styles.flashcardInfo}>
+                            <Text
+                              style={styles.sidebarItemText}
+                              numberOfLines={1}
+                            >
+                              {flashcard.title}
+                            </Text>
+                            <Text style={styles.flashcardDate}>
+                              {new Date(
+                                flashcard.createdAt
+                              ).toLocaleDateString()}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.deleteIconButton}
+                          onPress={() => deleteFlashcard(flashcard.id)}
+                        >
+                          <Ionicons
+                            name="trash-outline"
+                            size={18}
+                            color="#ef4444"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </>
+                )}
               </ScrollView>
             </Animated.View>
           </TouchableOpacity>
@@ -719,6 +877,15 @@ const styles = StyleSheet.create({
   },
   sidebarItemTextActive: { color: "#6366f1", fontWeight: "600" },
   deleteIconButton: { padding: 8 },
+  flashcardInfo: {
+    flex: 1,
+    marginLeft: 0,
+  },
+  flashcardDate: {
+    fontSize: 12,
+    color: "#9ca3af",
+    marginTop: 2,
+  },
   feedContainer: { flex: 1, backgroundColor: "#fff" },
   emptyState: {
     flex: 1,
